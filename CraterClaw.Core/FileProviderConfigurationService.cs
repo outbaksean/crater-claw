@@ -7,7 +7,10 @@ internal sealed class FileProviderConfigurationService(string configurationPath)
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true,
-        WriteIndented = true
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+        IndentCharacter = ' ',
+        IndentSize = 4
     };
 
     public async Task<ProviderConfiguration> LoadAsync(CancellationToken cancellationToken)

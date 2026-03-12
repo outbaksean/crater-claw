@@ -207,6 +207,10 @@ public sealed class FileProviderConfigurationServiceTests
         Assert.Single(reloaded.Endpoints);
         Assert.Equal("local", reloaded.ActiveProviderName);
         Assert.Equal("http://localhost:11434", reloaded.Endpoints[0].BaseUrl);
+
+        var savedJson = await File.ReadAllTextAsync(fixture.ConfigurationPath);
+        Assert.Contains("\"activeProviderName\"", savedJson, StringComparison.Ordinal);
+        Assert.Contains("\"endpoints\"", savedJson, StringComparison.Ordinal);
     }
 
     [Fact]
