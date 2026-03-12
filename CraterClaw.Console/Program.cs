@@ -1,30 +1,76 @@
 ﻿using CraterClaw.Core;
 using Microsoft.Extensions.DependencyInjection;
 
-var endpointInput = args.FirstOrDefault();
+var configurationPathInput = args.FirstOrDefault();
 
-if (string.IsNullOrWhiteSpace(endpointInput))
+if (string.IsNullOrWhiteSpace(configurationPathInput))
 {
-    Console.Write("Enter Ollama base URL: ");
-    endpointInput = Console.ReadLine();
+    Console.Write("Enter provider config file path (leave blank for ./provider-config.json): ");
+    configurationPathInput = Console.ReadLine();
 }
 
-if (string.IsNullOrWhiteSpace(endpointInput))
-{
-    Console.WriteLine("No endpoint provided. Exiting.");
-    return;
-}
+var configurationPath = string.IsNullOrWhiteSpace(configurationPathInput)
+    ? Path.Combine(Environment.CurrentDirectory, "provider-config.json")
+    : configurationPathInput.Trim();
 
 var services = new ServiceCollection();
 services.AddHttpClient();
-services.AddCraterClawCore();
+services.AddCraterClawCore(configurationPath);
 
 using var provider = services.BuildServiceProvider();
+var configurationService = provider.GetRequiredService<IProviderConfigurationService>();
 var statusService = provider.GetRequiredService<IProviderStatusService>();
 
 try
 {
-    var endpoint = new ProviderEndpoint("ollama", endpointInput.Trim());
+    var configuration = await configurationService.LoadAsync(CancellationToken.None);
+    var endpoints = configuration.Endpoints;
+
+    if (endpoints.Count == 0)
+    {
+        Console.WriteLine("No configured endpoints found.");
+        return;
+    }
+
+    Console.WriteLine($"Loaded provider config: {configurationPath}");
+    Console.WriteLine("Configured endpoints:");
+    for (var i = 0; i < endpoints.Count; i++)
+    {
+        var configuredEndpoint = endpoints[i];
+        var activeMarker = string.Equals(
+            configuredEndpoint.Name,
+            configuration.ActiveProviderName,
+            StringComparison.OrdinalIgnoreCase)
+            ? " (active)"
+            : string.Empty;
+
+        Console.WriteLine($"{i + 1}. {configuredEndpoint.Name}: {configuredEndpoint.BaseUrl}{activeMarker}");
+    }
+
+    Console.Write("Select endpoint number (leave blank to keep active): ");
+    var selectedIndexInput = Console.ReadLine();
+
+    ProviderEndpoint endpoint;
+    if (string.IsNullOrWhiteSpace(selectedIndexInput))
+    {
+        endpoint = await configurationService.GetActiveEndpointAsync(CancellationToken.None);
+    }
+    else
+    {
+        if (!int.TryParse(selectedIndexInput, out var selectedIndex) ||
+            selectedIndex < 1 ||
+            selectedIndex > endpoints.Count)
+        {
+            Console.WriteLine($"Invalid selection '{selectedIndexInput}'. Expected a number between 1 and {endpoints.Count}.");
+            return;
+        }
+
+        var selectedEndpoint = endpoints[selectedIndex - 1];
+        endpoint = await configurationService.SetActiveEndpointAsync(selectedEndpoint.Name, CancellationToken.None);
+    }
+
+    Console.WriteLine($"Using endpoint: {endpoint.Name} ({endpoint.BaseUrl})");
+
     var status = await statusService.CheckStatusAsync(endpoint, CancellationToken.None);
 
     if (status.IsReachable)

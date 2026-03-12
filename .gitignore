@@ -52,3 +52,8 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# VS Code workspace files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/tasks.json

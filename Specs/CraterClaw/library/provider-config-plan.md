@@ -16,7 +16,7 @@
 ## Phase 1: Configuration Contracts and Schema
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
 - Define provider configuration contracts and JSON schema types for configured endpoints and active endpoint selection.
@@ -54,7 +54,7 @@
 ## Phase 2: File-Backed Configuration Service and Unit Tests
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
 - Implement a file-backed `IProviderConfigurationService` and verify behavior through automated unit tests.
@@ -85,7 +85,7 @@
 ## Phase 3: Console Selection Flow and End-to-End Verification
 
 ### Status
-- Not Started
+- In Progress
 
 ### Goal
 - Wire the console harness to list configured endpoints, select active endpoint, and run connectivity checks using the selected endpoint.
@@ -110,6 +110,13 @@
 - Select endpoint A and confirm connectivity check uses endpoint A.
 - Select endpoint B and confirm connectivity check uses endpoint B.
 - Restart console and confirm the latest active selection persists.
+
+### Session Verification Notes
+- `dotnet build CraterClaw.slnx` succeeds.
+- `dotnet test CraterClaw.slnx --no-build` passes (16/16).
+- Console flow loads configured endpoints, accepts endpoint name selection, persists active provider name, and runs status checks against the selected endpoint.
+- Temporary smoke verification updated active provider from `local` to `remote` and persisted the change to JSON.
+- Final manual verification sign-off remains with user.
 
 ### Spec Sync
 - If the console input approach changes (args vs prompt), update this plan and spec to match final behavior.

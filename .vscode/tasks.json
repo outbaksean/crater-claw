@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run CraterClaw Console (with args)",
+            "type": "shell",
+            "command": "dotnet run --project .\\CraterClaw.Console -- ${input:consoleArgs}",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run All Unit Tests",
+            "type": "shell",
+            "command": "dotnet test .\\CraterClaw.slnx",
+            "group": "test",
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "consoleArgs",
+            "type": "promptString",
+            "description": "Arguments to pass to CraterClaw.Console (example: .\\provider-config.json)",
+            "default": ".\\provider-config.json"
+        }
+    ]
+}
