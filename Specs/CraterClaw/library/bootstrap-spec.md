@@ -52,4 +52,4 @@
 - Confirm the console output distinguishes a reachable endpoint from an unreachable or invalid endpoint.
 
 ## Status
-- Planning
+- Done

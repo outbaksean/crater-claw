@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="CraterClaw.Console/CraterClaw.Console.csproj" />
+  <Project Path="CraterClaw.Core.Tests/CraterClaw.Core.Tests.csproj" />
+  <Project Path="CraterClaw.Core/CraterClaw.Core.csproj" />
+</Solution>

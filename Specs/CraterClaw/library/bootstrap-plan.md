@@ -15,7 +15,7 @@
 ## Phase 1: Solution Scaffold and Provider Contracts
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
 - Produce a building solution with three projects and the minimum contracts needed for an Ollama status check.
@@ -51,7 +51,7 @@
 ## Phase 2: Ollama Provider Implementation and Unit Tests
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
 - Implement `IProviderStatusService` against the Ollama `/api/tags` health endpoint using mocked HTTP behavior in tests, with no dependency on a live instance.
@@ -82,7 +82,7 @@
 ## Phase 3: Console Harness Wiring and End-to-End Manual Verification
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
 - Wire the console harness to accept an Ollama endpoint and run the library connectivity check, producing readable output for both reachable and unreachable targets.
@@ -106,6 +106,12 @@
 - Start the harness with a known reachable Ollama endpoint and confirm the output indicates success.
 - Start the harness with an unreachable or invalid URL and confirm the output clearly indicates failure with a useful message.
 - Confirm the library project has no reference to console-specific types, keeping the dependency direction correct.
+
+### Session Verification Notes
+- `dotnet build CraterClaw.slnx` succeeds.
+- `dotnet test CraterClaw.slnx --no-build` passes (6/6).
+- `dotnet run --project CraterClaw.Console -- http://localhost:1` returns an explicit unreachable result and error message.
+- User confirmed manual verification is complete and signed off.
 
 ### Spec Sync
 - If the endpoint acceptance mechanism (args vs. prompt vs. config file) is changed during implementation, update this plan and the bootstrap spec to reflect the final approach.
