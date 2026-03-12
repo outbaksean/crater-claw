@@ -1,6 +1,7 @@
 # CraterClaw
 
 ## Spec-Based Development
+
 ### Structure & Hierarchy
 
 - The Specs/ directory contains all Markdown specification and plan files.
@@ -53,6 +54,7 @@ Specs/
 - Define Contract: Generate or update interfaces, types, or API signatures.
 - Write Tests: Generate automated tests based on the Contract and Spec (before implementation).
 - Implement: Generate the code to satisfy the tests.
+- README Sync: If steps to configure and run the application have changed, update the README under the Current State header. 
 - Manual Verify: The user reviews and does the "Manual Verification Plan" defined in the plan.
 - Sync Spec: If implementation forced a logic change, update the .md spec/plan and any relevant higher level specs.
 - Close Session: Mark Phase status as Done.
@@ -75,3 +77,4 @@ Specs/
 - Node is avaialble for scripting
 - Never use an icon or emoji in documentation or source code
 - Do not attempt any git or github commands unless explicitly instructed
+- When making a manual verification plan, note any dependencies
