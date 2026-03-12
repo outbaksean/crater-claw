@@ -39,6 +39,7 @@
 ## Child Specs
 - [CraterClaw/library/bootstrap-spec.md](CraterClaw/library/bootstrap-spec.md): Minimal testable bootstrap slice for library scaffolding, console harness scaffolding, and basic Ollama connectivity
 - [CraterClaw/library/provider-config-spec.md](CraterClaw/library/provider-config-spec.md): Provider endpoint configuration, active endpoint selection, and persistence for connectivity checks
+- [CraterClaw/library/model-catalog-spec.md](CraterClaw/library/model-catalog-spec.md): Model listing and pull/download workflows against the active provider endpoint
 
 ## Status
 - Planning
