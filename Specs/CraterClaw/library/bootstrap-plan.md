@@ -1,5 +1,10 @@
 # CraterClaw Library Bootstrap Plan
 
+## Decisions
+
+- Semantic Kernel is excluded from the bootstrap. The connectivity check is a direct HTTP call and does not benefit from it. Semantic Kernel may be introduced in a later child spec if it materially supports a specific capability.
+- Dependency injection uses `Microsoft.Extensions.DependencyInjection`. The console app constructs a `ServiceCollection`, registers `IProviderStatusService` and `HttpClient`, and resolves the service from the built provider. This approach is consistent with how the future web stack will wire dependencies.
+
 ## Overview
 - This plan implements the bootstrap spec across three phases.
 - Each phase is sized to be fully implemented, tested, and verified in one AI session.
@@ -57,9 +62,10 @@
 - HTTP GET to `{BaseUrl}/api/tags` — a 200 response is treated as reachable; any exception or non-2xx response is treated as unreachable with a descriptive error message.
 
 ### Tasks
-- Register `OllamaProviderStatusService` as the implementation of `IProviderStatusService`.
+- Add `OllamaProviderStatusService` as an internal class in `CraterClaw.Core`.
 - Implement `CheckStatusAsync` according to the contract above.
-- Do not use Semantic Kernel in this phase; the connectivity check is a direct HTTP call and does not benefit from it.
+- Register `IProviderStatusService` to `OllamaProviderStatusService` using `Microsoft.Extensions.DependencyInjection` in a static extension method on `IServiceCollection` within the library (e.g. `AddCraterClawCore()`), so the console and future web host can register it with one call.
+- Semantic Kernel is not used in this phase per the Decisions section above.
 
 ### Tests
 - Successful connectivity: mock `HttpMessageHandler` returns 200; assert `IsReachable` is true and `ErrorMessage` is null.
@@ -87,8 +93,9 @@
 - The output must clearly distinguish reachable from unreachable on the console.
 
 ### Tasks
-- Add dependency injection or manual wiring in the console app to construct `OllamaProviderStatusService` with an `HttpClient`.
-- Accept a base URL from args or prompt the user.
+- In `CraterClaw.Console`, create a `ServiceCollection`, call `AddCraterClawCore()`, register `HttpClient`, and build the service provider.
+- Resolve `IProviderStatusService` from the provider — no direct reference to `OllamaProviderStatusService` in the console project.
+- Accept a base URL from a command-line argument; prompt the user if none is provided.
 - Call `CheckStatusAsync` and print the result clearly.
 - Handle and display unexpected exceptions without crashing silently.
 

@@ -28,15 +28,22 @@
 
 Example Structure:
 ```text
-
+-- Option A: spec implemented directly via a plan
 Specs/
   ai-supervisor-spec.md
   ai-supervisor/
     library-spec.md
-    library-plan.md         <-- Contains Phases 1, 2, and 3
+    library-plan.md         <-- Phases 1, 2, and 3 live here; no library/ subdirectory
+
+-- Option B: spec too broad for a single plan, decomposed into child specs instead
+Specs/
+  ai-supervisor-spec.md
+  ai-supervisor/
+    library-spec.md         <-- No library-plan.md at this level
     library/
-      provider-spec.md      <-- Only if provider logic is too big for library-plan
+      provider-spec.md
       provider-plan.md
+      scheduler-spec.md     <-- Placeholder, no plan yet
 ```
 
 - Implementing a Phase (The Execution Loop)
