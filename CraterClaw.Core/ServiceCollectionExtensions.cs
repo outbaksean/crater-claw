@@ -4,11 +4,19 @@ namespace CraterClaw.Core;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddCraterClawCore(this IServiceCollection services)
+    public static IServiceCollection AddCraterClawCore(
+        this IServiceCollection services,
+        string? providerConfigurationPath = null)
     {
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddTransient<IProviderStatusService, OllamaProviderStatusService>();
+        var resolvedPath = string.IsNullOrWhiteSpace(providerConfigurationPath)
+            ? Path.Combine(Environment.CurrentDirectory, "provider-config.json")
+            : providerConfigurationPath;
+        services.AddSingleton<IProviderConfigurationService>(_ =>
+            new FileProviderConfigurationService(resolvedPath));
+
         return services;
     }
 }

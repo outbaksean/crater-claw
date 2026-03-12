@@ -1,0 +1,9 @@
+{
+    "endpoints": [
+        {
+            "name": "local",
+            "baseUrl": "http://localhost:11434"
+        }
+    ],
+    "activeProviderName": "local"
+}

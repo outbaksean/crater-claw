@@ -54,4 +54,4 @@
 - Restart the console harness and confirm active selection persistence.
 
 ## Status
-- Planning
+- In Progress
