@@ -1,10 +1,13 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace CraterClaw.Core;
 
-internal sealed class OllamaModelExecutionService(HttpClient httpClient) : IModelExecutionService
+internal sealed class OllamaModelExecutionService(
+    HttpClient httpClient,
+    ILogger<OllamaModelExecutionService> logger) : IModelExecutionService
 {
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -18,6 +21,8 @@ internal sealed class OllamaModelExecutionService(HttpClient httpClient) : IMode
         ExecutionRequest request,
         CancellationToken cancellationToken)
     {
+        logger.LogInformation("Executing model {ModelName} at endpoint {EndpointName}", request.ModelName, endpoint.Name);
+
         if (!Uri.TryCreate(endpoint.BaseUrl, UriKind.Absolute, out var baseUri))
         {
             throw new InvalidOperationException("BaseUrl is not a valid absolute URI.");
@@ -38,6 +43,8 @@ internal sealed class OllamaModelExecutionService(HttpClient httpClient) : IMode
         var body = new OllamaChatRequest(request.ModelName, messages, Stream: false, options);
         var json = JsonSerializer.Serialize(body, SerializerOptions);
 
+        logger.LogDebug("Request body: {RequestJson}", json);
+
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         HttpResponseMessage httpResponse;
@@ -51,13 +58,15 @@ internal sealed class OllamaModelExecutionService(HttpClient httpClient) : IMode
         }
         catch (HttpRequestException ex)
         {
+            logger.LogError("Model execution failed: {ErrorMessage}", ex.Message);
             throw new InvalidOperationException($"Model execution request failed: {ex.Message}", ex);
         }
 
         if (!httpResponse.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException(
-                $"Provider returned HTTP {(int)httpResponse.StatusCode} ({httpResponse.StatusCode}).");
+            var errorMessage = $"Provider returned HTTP {(int)httpResponse.StatusCode} ({httpResponse.StatusCode}).";
+            logger.LogError("Model execution failed: {ErrorMessage}", errorMessage);
+            throw new InvalidOperationException(errorMessage);
         }
 
         await using var stream = await httpResponse.Content.ReadAsStreamAsync(cancellationToken);
@@ -72,11 +81,13 @@ internal sealed class OllamaModelExecutionService(HttpClient httpClient) : IMode
         }
         catch (JsonException ex)
         {
+            logger.LogError("Model execution failed: {ErrorMessage}", ex.Message);
             throw new InvalidOperationException("Model execution response JSON is invalid.", ex);
         }
 
         if (response is null)
         {
+            logger.LogError("Model execution failed: response was empty");
             throw new InvalidOperationException("Model execution response was empty.");
         }
 
@@ -85,6 +96,8 @@ internal sealed class OllamaModelExecutionService(HttpClient httpClient) : IMode
             "length" => FinishReason.Length,
             _ => FinishReason.Stop
         };
+
+        logger.LogInformation("Model {ModelName} finished with reason {FinishReason}", request.ModelName, finishReason);
 
         return new ExecutionResponse(
             response.Message?.Content ?? string.Empty,

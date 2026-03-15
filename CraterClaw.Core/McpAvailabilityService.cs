@@ -1,17 +1,30 @@
+using Microsoft.Extensions.Logging;
+
 namespace CraterClaw.Core;
 
-internal sealed class McpAvailabilityService(HttpClient httpClient) : IMcpAvailabilityService
+internal sealed class McpAvailabilityService(
+    HttpClient httpClient,
+    ILogger<McpAvailabilityService> logger) : IMcpAvailabilityService
 {
     public async Task<McpAvailabilityResult> CheckAvailabilityAsync(
         McpServerDefinition server,
         CancellationToken cancellationToken)
     {
-        return server.Transport switch
+        logger.LogInformation("Checking availability of MCP server {ServerName} ({Transport})", server.Name, server.Transport);
+
+        var result = server.Transport switch
         {
             McpTransport.Http => await CheckHttpAsync(server, cancellationToken),
             McpTransport.Stdio => CheckStdio(server),
             _ => new McpAvailabilityResult(server.Name, false, $"Unsupported transport: {server.Transport}")
         };
+
+        if (result.IsAvailable)
+            logger.LogInformation("MCP server {ServerName} is available", server.Name);
+        else
+            logger.LogWarning("MCP server {ServerName} is unavailable: {ErrorMessage}", server.Name, result.ErrorMessage);
+
+        return result;
     }
 
     private async Task<McpAvailabilityResult> CheckHttpAsync(

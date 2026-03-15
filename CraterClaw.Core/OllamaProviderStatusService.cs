@@ -1,9 +1,15 @@
+using Microsoft.Extensions.Logging;
+
 namespace CraterClaw.Core;
 
-internal sealed class OllamaProviderStatusService(HttpClient httpClient) : IProviderStatusService
+internal sealed class OllamaProviderStatusService(
+    HttpClient httpClient,
+    ILogger<OllamaProviderStatusService> logger) : IProviderStatusService
 {
     public async Task<ProviderStatus> CheckStatusAsync(ProviderEndpoint endpoint, CancellationToken cancellationToken)
     {
+        logger.LogInformation("Checking provider status for endpoint {EndpointName} at {BaseUrl}", endpoint.Name, endpoint.BaseUrl);
+
         if (!Uri.TryCreate(endpoint.BaseUrl, UriKind.Absolute, out var baseUri))
         {
             return new ProviderStatus(false, "BaseUrl is not a valid absolute URI.");
@@ -17,12 +23,13 @@ internal sealed class OllamaProviderStatusService(HttpClient httpClient) : IProv
 
             if (response.IsSuccessStatusCode)
             {
+                logger.LogInformation("Endpoint {EndpointName} is reachable", endpoint.Name);
                 return new ProviderStatus(true, null);
             }
 
-            return new ProviderStatus(
-                false,
-                $"Provider returned HTTP {(int)response.StatusCode} ({response.StatusCode}).");
+            var errorMessage = $"Provider returned HTTP {(int)response.StatusCode} ({response.StatusCode}).";
+            logger.LogWarning("Endpoint {EndpointName} is unreachable: {ErrorMessage}", endpoint.Name, errorMessage);
+            return new ProviderStatus(false, errorMessage);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -30,7 +37,9 @@ internal sealed class OllamaProviderStatusService(HttpClient httpClient) : IProv
         }
         catch (Exception ex)
         {
-            return new ProviderStatus(false, $"Connectivity check failed: {ex.Message}");
+            var errorMessage = $"Connectivity check failed: {ex.Message}";
+            logger.LogWarning("Endpoint {EndpointName} is unreachable: {ErrorMessage}", endpoint.Name, errorMessage);
+            return new ProviderStatus(false, errorMessage);
         }
     }
 }

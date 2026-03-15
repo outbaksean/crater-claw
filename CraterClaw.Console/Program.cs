@@ -2,7 +2,17 @@ using System.Collections.ObjectModel;
 using CraterClaw.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Serilog;
+
+var logDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
+var logPath = Path.Combine(logDirectory, "craterclaw-.log");
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .WriteTo.File(logPath, rollingInterval: RollingInterval.Day)
+    .CreateLogger();
 
 var configPath = Path.Combine(AppContext.BaseDirectory, "craterclaw.json");
 
@@ -15,6 +25,7 @@ var configuration = new ConfigurationBuilder()
 var services = new ServiceCollection();
 services.AddHttpClient();
 services.AddCraterClawCore(configuration);
+services.AddLogging(b => b.AddSerilog(dispose: true));
 
 using var provider = services.BuildServiceProvider();
 var providerOptions = provider.GetRequiredService<IOptions<ProviderOptions>>().Value;
@@ -27,6 +38,8 @@ var behaviorProfileService = provider.GetRequiredService<IBehaviorProfileService
 
 try
 {
+    Console.WriteLine($"Log file: {logDirectory}");
+
     var endpoints = providerOptions.Endpoints;
 
     if (endpoints.Count == 0)
@@ -246,6 +259,10 @@ catch (Exception ex)
 {
     Console.WriteLine("An unexpected error occurred.");
     Console.WriteLine(ex.Message);
+}
+finally
+{
+    await Log.CloseAndFlushAsync();
 }
 
 static string FormatSize(long bytes)
