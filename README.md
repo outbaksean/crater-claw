@@ -1,15 +1,25 @@
 # CraterClaw
 
-CraterClaw is an application I'm making as a solo dev to play with AI. I'm both playing with ai coding subscriptions and using ollama for some MCP agentic stuff. With the coding I'm trying out spec driven development and contract first development (see CLAUDE.md). The application is indended to be a fully local claw ai assistant.
+CraterClaw is an application I'm making as a solo dev to play with AI. I'm both playing with ai coding subscriptions and using ollama for some MCP agentic stuff. With the coding I'm trying out spec driven development and contract first development (see CLAUDE.md). The application is intended to be a fully local claw ai assistant.
 
 ## Current State
 
-Bootstrap and provider configuration slices are implemented. The library supports file-backed provider endpoint configuration, active endpoint selection, and connectivity checks through the console harness.
+The console harness supports:
+
+- Provider endpoint selection from `craterclaw.json` with a numbered list and default marker
+- Provider status check (Ollama connectivity)
+- Model listing from the active endpoint
+- Interactive model execution (single prompt/response)
+- MCP server listing with transport type and enabled status
+- MCP server availability checks (HTTP GET for http servers; PATH walk for stdio servers)
+
+Configuration is layered: `craterclaw.json` (committed, no secrets) -> dotnet user secrets (dev) -> OS environment variables (deployment). Sensitive values such as MCP server credentials are stored outside the repository.
 
 ## Prerequisites
 
 - .NET SDK 10.x
-- Optional: Ollama running locally or remotely for reachable-endpoint manual verification
+- Ollama running locally or on the LAN for provider connectivity (optional for tests)
+- `uv` on PATH for stdio MCP server availability checks (optional)
 
 Check SDK version:
 
@@ -20,9 +30,9 @@ dotnet --version
 ## Project Layout
 
 - `CraterClaw.slnx`: solution file
-- `CraterClaw.Core`: library contracts and provider status service
-- `CraterClaw.Console`: console harness for manual connectivity checks
-- `CraterClaw.Core.Tests`: xUnit tests for contracts and service behavior
+- `CraterClaw.Core`: library contracts, options types, and service implementations
+- `CraterClaw.Console`: console harness for manually exercising library workflows
+- `CraterClaw.Core.Tests`: xUnit unit tests (no live Ollama required)
 
 ## Restore and Build
 
@@ -39,33 +49,78 @@ dotnet build .\CraterClaw.slnx
 dotnet test .\CraterClaw.slnx
 ```
 
-The test suite uses mocked HTTP behavior and does not require a real Ollama instance.
+The test suite uses mocked HTTP and does not require a real Ollama instance or MCP server.
 
-## Configure Providers
+## Configuration
 
-The console harness reads providers from a JSON config file. By default it uses `./provider-config.json` in the current directory.
+All configuration lives in `CraterClaw.Console/craterclaw.json`. The file is committed with placeholder values for any secrets. Real values are supplied at runtime via dotnet user secrets (development) or OS environment variables (deployment).
 
-Example config file:
+### Provider endpoints
+
+Edit `craterclaw.json` to add or change endpoints and set the default active one:
 
 ```json
 {
-	"endpoints": [
-		{ "name": "local", "baseUrl": "http://localhost:11434" },
-		{ "name": "lan", "baseUrl": "http://192.168.1.50:11434" }
-	],
-	"activeProviderName": "local"
+    "providers": {
+        "active": "local",
+        "endpoints": {
+            "local": { "baseUrl": "http://localhost:11434" },
+            "lan":   { "baseUrl": "http://192.168.1.50:11434" }
+        }
+    }
 }
 ```
 
-## Run the Console Harness
-
-Run with a config file argument:
+To override the active endpoint without editing the file, use a user secret:
 
 ```powershell
-dotnet run --project .\CraterClaw.Console -- .\provider-config.json
+dotnet user-secrets set "providers:active" "lan" --project .\CraterClaw.Console
 ```
 
-Run without an argument (you will be prompted for config file path, blank uses default):
+### MCP servers
+
+MCP server definitions live under `mcp.servers` in `craterclaw.json`. Sensitive env values are left as empty strings in the file:
+
+```json
+{
+    "mcp": {
+        "servers": {
+            "qbittorrent": {
+                "label": "qBitTorrent",
+                "transport": "Stdio",
+                "command": "uvx",
+                "args": [ "--from", "git+https://github.com/jmagar/yarr-mcp", "qbittorrent-mcp-server" ],
+                "env": {
+                    "QBITTORRENT_URL": "",
+                    "QBITTORRENT_USER": "",
+                    "QBITTORRENT_PASS": "",
+                    "QBITTORRENT_MCP_TRANSPORT": "stdio"
+                },
+                "enabled": true
+            }
+        }
+    }
+}
+```
+
+Set the real values using dotnet user secrets so they are never committed:
+
+```powershell
+dotnet user-secrets set "mcp:servers:qbittorrent:env:QBITTORRENT_URL"  "http://192.168.1.x:8080" --project .\CraterClaw.Console
+dotnet user-secrets set "mcp:servers:qbittorrent:env:QBITTORRENT_USER" "admin"                    --project .\CraterClaw.Console
+dotnet user-secrets set "mcp:servers:qbittorrent:env:QBITTORRENT_PASS" "your-password"            --project .\CraterClaw.Console
+```
+
+User secrets are stored in `%APPDATA%\Microsoft\UserSecrets\craterclaw-console\secrets.json` on Windows, outside the repository.
+
+For deployment, use OS environment variables instead (`:` becomes `__` on platforms that do not support `:` in variable names; Windows supports `:` directly):
+
+```powershell
+$env:mcp__servers__qbittorrent__env__QBITTORRENT_URL  = "http://192.168.1.x:8080"
+$env:mcp__servers__qbittorrent__env__QBITTORRENT_PASS = "your-password"
+```
+
+## Run the Console Harness
 
 ```powershell
 dotnet run --project .\CraterClaw.Console
@@ -73,33 +128,15 @@ dotnet run --project .\CraterClaw.Console
 
 ### VS Code Task
 
-You can also run the console using the workspace task:
-
 1. Open `Terminal` -> `Run Task...`
 2. Choose `Run CraterClaw Console (with args)`
-3. Enter arguments when prompted (default: `.\provider-config.json`)
 
-The task runs:
+## Console Flow
 
-```powershell
-dotnet run --project .\CraterClaw.Console -- <your-args>
-```
-
-## Expected Output
-
-- Config load and endpoint list are printed.
-- Endpoints are numbered (`1`, `2`, etc.) and you can choose by number, or press Enter to keep the current active endpoint.
-- Reachable endpoint:
-  - `Reachable: <base-url>`
-- Unreachable or invalid endpoint:
-  - `Unreachable: <base-url>`
-  - Error detail on the next line
-
-## Manual Verification Flow
-
-1. Start Ollama or identify a known reachable endpoint.
-2. Create a `provider-config.json` with at least two endpoints.
-3. Run the console harness and select endpoint `1`.
-4. Confirm endpoint A is used for the status check.
-5. Run again, select endpoint `2`, and confirm endpoint B is used.
-6. Confirm `activeProviderName` in the JSON file persists the latest selection.
+1. **Endpoint selection** - numbered list with `(default)` marker; press Enter to use the default.
+2. **Status check** - reports reachable or unreachable.
+3. **Model listing** - numbered list of downloaded models (if endpoint is reachable).
+4. **Model selection** - press Enter to skip execution.
+5. **Prompt** - enter a prompt and receive a response.
+6. **MCP server listing** - numbered list of configured servers with transport and enabled status.
+7. **Availability check** - select a server number or press Enter to skip.

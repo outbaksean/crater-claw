@@ -18,9 +18,15 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<ProviderOptions>, ProviderOptionsValidator>();
 
+        services.AddOptions<McpOptions>()
+            .Bind(configuration.GetSection("mcp"))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<McpOptions>, McpOptionsValidator>();
+
         services.AddTransient<IProviderStatusService, OllamaProviderStatusService>();
         services.AddTransient<IModelListingService, OllamaModelListingService>();
         services.AddTransient<IModelExecutionService, OllamaModelExecutionService>();
+        services.AddTransient<IMcpAvailabilityService, McpAvailabilityService>();
 
         return services;
     }

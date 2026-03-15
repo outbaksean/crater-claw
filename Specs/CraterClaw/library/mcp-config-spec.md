@@ -9,8 +9,8 @@
 ## Scope
 - Add MCP configuration contracts:
   - `McpTransport`: discriminated value (Stdio, Http)
-  - `McpServerDefinition`: immutable record with name, display label, transport type, transport-specific connection parameters, and enabled flag
-    - Stdio parameters: command path and argument list
+  - `McpServerDefinition`: immutable record with name, display label, transport type, transport-specific connection parameters, optional environment variables, and enabled flag
+    - Stdio parameters: command path, argument list, and optional environment variable map passed to the spawned process
     - Http parameters: base URL
   - `McpAvailabilityResult`: immutable record with server name, availability flag, and optional error message
   - `IMcpConfigurationService`: load and save MCP server definitions from a JSON file
@@ -18,7 +18,7 @@
 - Define the JSON schema for MCP server configuration (separate file from provider-config.json).
 - Implement availability checks:
   - Http: HTTP GET to the server base URL; reachable if a response is returned regardless of status code
-  - Stdio: check that the command exists on the system PATH or as an absolute path; do not spawn the process
+  - Stdio: check that the command exists on the system PATH or as an absolute path; do not spawn the process. For `uvx`-based servers this means checking that `uvx` is installed, not that the MCP package has been downloaded.
 - Wire the console harness to list configured MCP servers and their enabled status, and to trigger an availability check for a selected server.
 - Add automated tests for configuration parsing, validation, and availability service behavior without live MCP endpoints.
 
@@ -35,29 +35,31 @@
 {
   "servers": [
     {
-      "name": "searxng",
-      "label": "SearXNG Web Search",
-      "transport": "http",
-      "baseUrl": "http://localhost:8080",
-      "enabled": true
-    },
-    {
-      "name": "obsidian",
-      "label": "Obsidian Notes",
+      "name": "qbittorrent",
+      "label": "qBitTorrent",
       "transport": "stdio",
-      "command": "npx",
-      "args": ["-y", "obsidian-mcp", "--vault", "C:/Users/seane/Documents/Notes"],
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/jmagar/yarr-mcp", "qbittorrent-mcp-server"],
+      "env": {
+        "QBITTORRENT_URL": "http://192.168.1.x:8080",
+        "QBITTORRENT_USER": "admin",
+        "QBITTORRENT_PASS": "password",
+        "QBITTORRENT_MCP_TRANSPORT": "stdio"
+      },
       "enabled": true
     }
   ]
 }
 ```
 
+## Prerequisites
+- See [mcp-config-prereqs.md](mcp-config-prereqs.md) for required external services before implementing or manually verifying this spec.
+
 ## Manual Verification
-- Create a config file with at least one HTTP server and one stdio server.
-- Run the console harness and confirm both appear in the server list with correct transport type and enabled status.
-- Trigger an availability check on the HTTP server and confirm the result is displayed.
-- Trigger an availability check on the stdio server and confirm the command existence check result is displayed.
+- Dependencies: `uv` installed on this machine; qBitTorrent WebUI reachable from this machine (see mcp-config-prereqs.md).
+- Create `mcp-config.json` with the qBitTorrent server configured as a Stdio entry using `uvx` (see JSON schema above).
+- Run the console harness and confirm the server appears in the numbered list with correct transport type and enabled status.
+- Trigger an availability check and confirm `uvx` is detected as available.
 
 ## Status
-- Planning
+- Done
