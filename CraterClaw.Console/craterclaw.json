@@ -1,0 +1,11 @@
+{
+    "providers": {
+        "active": "wslWithLocalhostIp",
+        "endpoints": {
+            "local": { "baseUrl": "http://localhost:11434" },
+            "wslWithWslIp": { "baseUrl": "http://172.24.209.117:11435" },
+            "wslWithHostIp": { "baseUrl": "http://172.24.208.1:11435" },
+            "wslWithLocalhostIp": { "baseUrl": "http://localhost:11435" }
+        }
+    }
+}

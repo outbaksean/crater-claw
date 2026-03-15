@@ -41,6 +41,7 @@
 - [CraterClaw/library/provider-config-spec.md](CraterClaw/library/provider-config-spec.md): Provider endpoint configuration, active endpoint selection, and persistence for connectivity checks
 - [CraterClaw/library/model-listing-spec.md](CraterClaw/library/model-listing-spec.md): List downloaded models available at the active provider endpoint
 - [CraterClaw/library/interactive-execution-spec.md](CraterClaw/library/interactive-execution-spec.md): Send conversational messages to a model and receive a text response
+- [CraterClaw/library/secrets-spec.md](CraterClaw/library/secrets-spec.md): Resolve `${VAR_NAME}` references in config values from OS user-level environment variables at point of use
 - [CraterClaw/library/mcp-config-spec.md](CraterClaw/library/mcp-config-spec.md): Load MCP server definitions from configuration and check their availability on demand
 - [CraterClaw/library/behavior-profiles-spec.md](CraterClaw/library/behavior-profiles-spec.md): Fixed catalog of curated profiles combining model guidance and permitted MCP server sets
 - [CraterClaw/library/agentic-execution-spec.md](CraterClaw/library/agentic-execution-spec.md): Orchestrate a model tool-use loop against MCP-backed tools within a selected behavior profile
