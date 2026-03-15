@@ -21,6 +21,7 @@ using var provider = services.BuildServiceProvider();
 var configurationService = provider.GetRequiredService<IProviderConfigurationService>();
 var statusService = provider.GetRequiredService<IProviderStatusService>();
 var modelListingService = provider.GetRequiredService<IModelListingService>();
+var executionService = provider.GetRequiredService<IModelExecutionService>();
 
 try
 {
@@ -78,9 +79,10 @@ try
     {
         Console.WriteLine($"Reachable: {endpoint.BaseUrl}");
 
+        IReadOnlyList<ModelDescriptor> models = [];
         try
         {
-            var models = await modelListingService.ListModelsAsync(endpoint, CancellationToken.None);
+            models = await modelListingService.ListModelsAsync(endpoint, CancellationToken.None);
             if (models.Count == 0)
             {
                 Console.WriteLine("No models downloaded on this endpoint.");
@@ -88,15 +90,65 @@ try
             else
             {
                 Console.WriteLine($"Available models ({models.Count}):");
-                foreach (var model in models)
+                for (var i = 0; i < models.Count; i++)
                 {
-                    Console.WriteLine($"  {model.Name}  ({FormatSize(model.SizeBytes)})");
+                    Console.WriteLine($"{i + 1}. {models[i].Name}  ({FormatSize(models[i].SizeBytes)})");
                 }
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Model listing failed: {ex.Message}");
+        }
+
+        string? selectedModelName = null;
+        if (models.Count > 0)
+        {
+            Console.Write("Select model number (leave blank to skip): ");
+            var modelIndexInput = Console.ReadLine();
+
+            if (!string.IsNullOrWhiteSpace(modelIndexInput))
+            {
+                if (!int.TryParse(modelIndexInput, out var modelIndex) ||
+                    modelIndex < 1 ||
+                    modelIndex > models.Count)
+                {
+                    Console.WriteLine($"Invalid selection '{modelIndexInput}'. Expected a number between 1 and {models.Count}.");
+                    return;
+                }
+
+                selectedModelName = models[modelIndex - 1].Name;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedModelName))
+        {
+            Console.Write("Enter prompt: ");
+            var prompt = Console.ReadLine();
+
+            if (!string.IsNullOrWhiteSpace(prompt))
+            {
+                try
+                {
+                    var executionRequest = new ExecutionRequest(
+                        selectedModelName,
+                        [new ConversationMessage(MessageRole.User, prompt.Trim())]);
+
+                    var executionResponse = await executionService.ExecuteAsync(endpoint, executionRequest, CancellationToken.None);
+
+                    Console.WriteLine("Response:");
+                    Console.WriteLine(executionResponse.Content);
+
+                    if (executionResponse.FinishReason == FinishReason.Length)
+                    {
+                        Console.WriteLine("(response truncated by token limit)");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Execution failed: {ex.Message}");
+                }
+            }
         }
     }
     else
