@@ -12,6 +12,7 @@ public static class ServiceCollectionExtensions
 
         services.AddTransient<IProviderStatusService, OllamaProviderStatusService>();
         services.AddTransient<IModelListingService, OllamaModelListingService>();
+        services.AddTransient<IModelExecutionService, OllamaModelExecutionService>();
         var resolvedPath = string.IsNullOrWhiteSpace(providerConfigurationPath)
             ? Path.Combine(Environment.CurrentDirectory, "provider-config.json")
             : providerConfigurationPath;

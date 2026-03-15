@@ -36,4 +36,4 @@
 - Confirm that specifying a model name that does not exist produces a clear error.
 
 ## Status
-- Planning
+- Done
