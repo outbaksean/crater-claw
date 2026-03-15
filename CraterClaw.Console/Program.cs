@@ -20,6 +20,7 @@ services.AddCraterClawCore(configurationPath);
 using var provider = services.BuildServiceProvider();
 var configurationService = provider.GetRequiredService<IProviderConfigurationService>();
 var statusService = provider.GetRequiredService<IProviderStatusService>();
+var modelListingService = provider.GetRequiredService<IModelListingService>();
 
 try
 {
@@ -76,6 +77,27 @@ try
     if (status.IsReachable)
     {
         Console.WriteLine($"Reachable: {endpoint.BaseUrl}");
+
+        try
+        {
+            var models = await modelListingService.ListModelsAsync(endpoint, CancellationToken.None);
+            if (models.Count == 0)
+            {
+                Console.WriteLine("No models downloaded on this endpoint.");
+            }
+            else
+            {
+                Console.WriteLine($"Available models ({models.Count}):");
+                foreach (var model in models)
+                {
+                    Console.WriteLine($"  {model.Name}  ({FormatSize(model.SizeBytes)})");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Model listing failed: {ex.Message}");
+        }
     }
     else
     {
@@ -87,4 +109,15 @@ catch (Exception ex)
 {
     Console.WriteLine("An unexpected error occurred while checking provider status.");
     Console.WriteLine(ex.Message);
+}
+
+static string FormatSize(long bytes)
+{
+    const long gb = 1_073_741_824;
+    const long mb = 1_048_576;
+
+    if (bytes >= gb)
+        return $"{bytes / (double)gb:F1} GB";
+
+    return $"{bytes / (double)mb:F1} MB";
 }

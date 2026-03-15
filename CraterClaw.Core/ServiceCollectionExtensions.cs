@@ -11,6 +11,7 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddTransient<IProviderStatusService, OllamaProviderStatusService>();
+        services.AddTransient<IModelListingService, OllamaModelListingService>();
         var resolvedPath = string.IsNullOrWhiteSpace(providerConfigurationPath)
             ? Path.Combine(Environment.CurrentDirectory, "provider-config.json")
             : providerConfigurationPath;

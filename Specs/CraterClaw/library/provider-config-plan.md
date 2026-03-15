@@ -85,7 +85,7 @@
 ## Phase 3: Console Selection Flow and End-to-End Verification
 
 ### Status
-- In Progress
+- Done
 
 ### Goal
 - Wire the console harness to list configured endpoints, select active endpoint, and run connectivity checks using the selected endpoint.
