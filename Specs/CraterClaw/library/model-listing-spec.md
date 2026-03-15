@@ -33,4 +33,4 @@
 - Confirm that an endpoint with no downloaded models produces a clear empty-list message rather than an error.
 
 ## Status
-- Planning
+- Done

@@ -18,7 +18,7 @@
 ## Phase 1: Contract and Tests
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
 - Define the `ModelDescriptor` record and `IModelListingService` interface, and establish automated tests that will drive the Phase 2 implementation.
@@ -64,7 +64,7 @@
 ## Phase 2: Ollama Implementation, DI Registration, and Console Wiring
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
 - Implement `OllamaModelListingService`, register it in DI, and update the console harness to display available models after a successful status check.
