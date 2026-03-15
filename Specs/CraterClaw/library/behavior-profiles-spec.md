@@ -11,11 +11,9 @@
   - `BehaviorProfile`: immutable record with a stable identifier, display name, description, recommended model tags (hints for model selection, not hard requirements), and the list of MCP server names the profile is permitted to use
   - `IBehaviorProfileService`: retrieve all profiles and retrieve a profile by identifier
 - Implement the profile catalog as hardcoded application data in `CraterClaw.Core`; no file or database backing.
-- Define an initial catalog with at least the following profiles:
-  - `general-assistant`: no MCP servers, general-purpose conversation and reasoning
-  - `web-research`: SearXNG MCP, web search and summarization tasks
-  - `notes-assistant`: Obsidian MCP, reading and writing notes
-  - `download-manager`: qBitTorrent MCP, querying and managing downloads
+- Define an initial catalog with the following profiles:
+  - `no-tools`: no MCP servers, general-purpose conversation and reasoning
+  - `qbittorrent-manager`: qBitTorrent MCP, querying and managing downloads
 - Wire the console harness to list available profiles and select one for use in an agentic task.
 - Add automated tests confirming the catalog is complete, identifiers are unique, and profile retrieval by identifier behaves correctly.
 
