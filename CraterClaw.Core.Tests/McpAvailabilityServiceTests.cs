@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CraterClaw.Core.Tests;
 
@@ -10,7 +11,7 @@ public sealed class McpAvailabilityServiceTests
     {
         using var client = CreateClient((_, _) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-        var service = new McpAvailabilityService(client);
+        var service = new McpAvailabilityService(client, NullLogger<McpAvailabilityService>.Instance);
 
         var server = new McpServerDefinition(
             "searxng", "SearXNG", McpTransport.Http, "http://localhost:8080",
@@ -26,7 +27,7 @@ public sealed class McpAvailabilityServiceTests
     {
         using var client = CreateClient((_, _) =>
             throw new HttpRequestException("Connection refused"));
-        var service = new McpAvailabilityService(client);
+        var service = new McpAvailabilityService(client, NullLogger<McpAvailabilityService>.Instance);
 
         var server = new McpServerDefinition(
             "searxng", "SearXNG", McpTransport.Http, "http://localhost:8080",
@@ -46,7 +47,7 @@ public sealed class McpAvailabilityServiceTests
             await Task.Delay(Timeout.Infinite, ct);
             return new HttpResponseMessage(HttpStatusCode.OK);
         });
-        var service = new McpAvailabilityService(client);
+        var service = new McpAvailabilityService(client, NullLogger<McpAvailabilityService>.Instance);
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -62,7 +63,7 @@ public sealed class McpAvailabilityServiceTests
     public async Task CheckAvailabilityAsync_ReturnsAvailable_WhenStdioCommandFoundOnPath()
     {
         var command = OperatingSystem.IsWindows() ? "cmd" : "sh";
-        var service = new McpAvailabilityService(new HttpClient());
+        var service = new McpAvailabilityService(new HttpClient(), NullLogger<McpAvailabilityService>.Instance);
 
         var server = new McpServerDefinition(
             "test", "Test", McpTransport.Stdio, null,
@@ -76,7 +77,7 @@ public sealed class McpAvailabilityServiceTests
     [Fact]
     public async Task CheckAvailabilityAsync_ReturnsUnavailable_WhenStdioCommandNotFound()
     {
-        var service = new McpAvailabilityService(new HttpClient());
+        var service = new McpAvailabilityService(new HttpClient(), NullLogger<McpAvailabilityService>.Instance);
 
         var server = new McpServerDefinition(
             "test", "Test", McpTransport.Stdio, null,

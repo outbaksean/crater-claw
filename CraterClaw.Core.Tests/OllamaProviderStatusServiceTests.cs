@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CraterClaw.Core.Tests;
 
@@ -35,7 +36,7 @@ public sealed class OllamaProviderStatusServiceTests
     {
         using var client = CreateClient((_, _) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-        var service = new OllamaProviderStatusService(client);
+        var service = new OllamaProviderStatusService(client, NullLogger<OllamaProviderStatusService>.Instance);
 
         var status = await service.CheckStatusAsync(
             new ProviderEndpoint("ollama", "http://localhost:11434"),
@@ -49,7 +50,7 @@ public sealed class OllamaProviderStatusServiceTests
     public async Task CheckStatusAsync_ReturnsUnreachable_WhenHttpRequestThrows()
     {
         using var client = CreateClient((_, _) => throw new HttpRequestException("Host unreachable"));
-        var service = new OllamaProviderStatusService(client);
+        var service = new OllamaProviderStatusService(client, NullLogger<OllamaProviderStatusService>.Instance);
 
         var status = await service.CheckStatusAsync(
             new ProviderEndpoint("ollama", "http://unreachable-host"),
@@ -64,7 +65,7 @@ public sealed class OllamaProviderStatusServiceTests
     {
         using var client = CreateClient((_, _) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)));
-        var service = new OllamaProviderStatusService(client);
+        var service = new OllamaProviderStatusService(client, NullLogger<OllamaProviderStatusService>.Instance);
 
         var status = await service.CheckStatusAsync(
             new ProviderEndpoint("ollama", "http://localhost:11434"),
@@ -82,7 +83,7 @@ public sealed class OllamaProviderStatusServiceTests
             await Task.Delay(Timeout.Infinite, cancellationToken);
             return new HttpResponseMessage(HttpStatusCode.OK);
         });
-        var service = new OllamaProviderStatusService(client);
+        var service = new OllamaProviderStatusService(client, NullLogger<OllamaProviderStatusService>.Instance);
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 

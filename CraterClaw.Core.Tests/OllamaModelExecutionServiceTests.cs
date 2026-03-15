@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CraterClaw.Core.Tests;
 
@@ -21,7 +22,7 @@ public sealed class OllamaModelExecutionServiceTests
             """;
 
         using var client = CreateClient(HttpStatusCode.OK, json);
-        var service = new OllamaModelExecutionService(client);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
 
         var request = new ExecutionRequest("llama3.2:latest", [new ConversationMessage(MessageRole.User, "Why is the sky blue?")]);
         var response = await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
@@ -44,7 +45,7 @@ public sealed class OllamaModelExecutionServiceTests
             """;
 
         using var client = CreateClient(HttpStatusCode.OK, json);
-        var service = new OllamaModelExecutionService(client);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
 
         var request = new ExecutionRequest("llama3.2:latest", [new ConversationMessage(MessageRole.User, "Tell me everything.")]);
         var response = await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
@@ -77,7 +78,7 @@ public sealed class OllamaModelExecutionServiceTests
             };
         });
 
-        var service = new OllamaModelExecutionService(client);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
         var request = new ExecutionRequest("llama3.2:latest", [new ConversationMessage(MessageRole.User, "Hi")]);
 
         await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
@@ -120,7 +121,7 @@ public sealed class OllamaModelExecutionServiceTests
             };
         });
 
-        var service = new OllamaModelExecutionService(client);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
         var request = new ExecutionRequest(
             "llama3.2:latest",
             [new ConversationMessage(MessageRole.User, "Hi")],
@@ -140,7 +141,7 @@ public sealed class OllamaModelExecutionServiceTests
     public async Task ExecuteAsync_ThrowsInvalidOperationException_ForNonSuccessHttpStatus()
     {
         using var client = CreateClient(HttpStatusCode.NotFound, string.Empty);
-        var service = new OllamaModelExecutionService(client);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
 
         var request = new ExecutionRequest("missing-model", [new ConversationMessage(MessageRole.User, "Hello")]);
 
@@ -152,7 +153,7 @@ public sealed class OllamaModelExecutionServiceTests
     public async Task ExecuteAsync_ThrowsInvalidOperationException_ForMalformedJson()
     {
         using var client = CreateClient(HttpStatusCode.OK, "{ not valid }");
-        var service = new OllamaModelExecutionService(client);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
 
         var request = new ExecutionRequest("llama3.2:latest", [new ConversationMessage(MessageRole.User, "Hello")]);
 
@@ -168,7 +169,7 @@ public sealed class OllamaModelExecutionServiceTests
             await Task.Delay(Timeout.Infinite, ct);
             return new HttpResponseMessage(HttpStatusCode.OK);
         });
-        var service = new OllamaModelExecutionService(client);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 

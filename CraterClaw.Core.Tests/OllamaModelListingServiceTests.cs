@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CraterClaw.Core.Tests;
 
@@ -26,7 +27,7 @@ public sealed class OllamaModelListingServiceTests
             """;
 
         using var client = CreateClient(HttpStatusCode.OK, json);
-        var service = new OllamaModelListingService(client);
+        var service = new OllamaModelListingService(client, NullLogger<OllamaModelListingService>.Instance);
 
         var models = await service.ListModelsAsync(
             new ProviderEndpoint("local", "http://localhost:11434"),
@@ -48,7 +49,7 @@ public sealed class OllamaModelListingServiceTests
         const string json = """{ "models": [] }""";
 
         using var client = CreateClient(HttpStatusCode.OK, json);
-        var service = new OllamaModelListingService(client);
+        var service = new OllamaModelListingService(client, NullLogger<OllamaModelListingService>.Instance);
 
         var models = await service.ListModelsAsync(
             new ProviderEndpoint("local", "http://localhost:11434"),
@@ -61,7 +62,7 @@ public sealed class OllamaModelListingServiceTests
     public async Task ListModelsAsync_ThrowsInvalidOperationException_ForMalformedJson()
     {
         using var client = CreateClient(HttpStatusCode.OK, "{ not valid json }");
-        var service = new OllamaModelListingService(client);
+        var service = new OllamaModelListingService(client, NullLogger<OllamaModelListingService>.Instance);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.ListModelsAsync(
@@ -77,7 +78,7 @@ public sealed class OllamaModelListingServiceTests
             await Task.Delay(Timeout.Infinite, cancellationToken);
             return new HttpResponseMessage(HttpStatusCode.OK);
         });
-        var service = new OllamaModelListingService(client);
+        var service = new OllamaModelListingService(client, NullLogger<OllamaModelListingService>.Instance);
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
