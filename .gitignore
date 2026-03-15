@@ -57,3 +57,8 @@ nunit-*.xml
 .vscode/*
 !.vscode/extensions.json
 !.vscode/tasks.json
+
+# Secret files
+.env
+*.secrets.json
+*.local.json

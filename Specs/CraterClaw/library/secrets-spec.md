@@ -107,4 +107,4 @@ Validation is implemented via `IValidateOptions<ProviderOptions>` and registered
 - Web API or ASP.NET Core hosting
 
 ## Status
-- Planning
+- Done

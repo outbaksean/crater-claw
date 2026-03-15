@@ -1,32 +1,29 @@
-﻿using CraterClaw.Core;
+using CraterClaw.Core;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
-var configurationPathInput = args.FirstOrDefault();
+var configPath = Path.Combine(AppContext.BaseDirectory, "craterclaw.json");
 
-if (string.IsNullOrWhiteSpace(configurationPathInput))
-{
-    Console.Write("Enter provider config file path (leave blank for ./provider-config.json): ");
-    configurationPathInput = Console.ReadLine();
-}
-
-var configurationPath = string.IsNullOrWhiteSpace(configurationPathInput)
-    ? Path.Combine(Environment.CurrentDirectory, "provider-config.json")
-    : configurationPathInput.Trim();
+var configuration = new ConfigurationBuilder()
+    .AddJsonFile(configPath, optional: false)
+    .AddUserSecrets<Program>()
+    .AddEnvironmentVariables()
+    .Build();
 
 var services = new ServiceCollection();
 services.AddHttpClient();
-services.AddCraterClawCore(configurationPath);
+services.AddCraterClawCore(configuration);
 
 using var provider = services.BuildServiceProvider();
-var configurationService = provider.GetRequiredService<IProviderConfigurationService>();
+var providerOptions = provider.GetRequiredService<IOptions<ProviderOptions>>().Value;
 var statusService = provider.GetRequiredService<IProviderStatusService>();
 var modelListingService = provider.GetRequiredService<IModelListingService>();
 var executionService = provider.GetRequiredService<IModelExecutionService>();
 
 try
 {
-    var configuration = await configurationService.LoadAsync(CancellationToken.None);
-    var endpoints = configuration.Endpoints;
+    var endpoints = providerOptions.Endpoints;
 
     if (endpoints.Count == 0)
     {
@@ -34,41 +31,43 @@ try
         return;
     }
 
-    Console.WriteLine($"Loaded provider config: {configurationPath}");
-    Console.WriteLine("Configured endpoints:");
-    for (var i = 0; i < endpoints.Count; i++)
-    {
-        var configuredEndpoint = endpoints[i];
-        var activeMarker = string.Equals(
-            configuredEndpoint.Name,
-            configuration.ActiveProviderName,
-            StringComparison.OrdinalIgnoreCase)
-            ? " (active)"
-            : string.Empty;
+    var endpointList = endpoints
+        .Select(kvp => new ProviderEndpoint(kvp.Key, kvp.Value.BaseUrl))
+        .ToList();
 
-        Console.WriteLine($"{i + 1}. {configuredEndpoint.Name}: {configuredEndpoint.BaseUrl}{activeMarker}");
+    Console.WriteLine("Configured endpoints:");
+    for (var i = 0; i < endpointList.Count; i++)
+    {
+        var defaultMarker = string.Equals(
+            endpointList[i].Name,
+            providerOptions.Active,
+            StringComparison.OrdinalIgnoreCase)
+            ? " (default)"
+            : string.Empty;
+        Console.WriteLine($"{i + 1}. {endpointList[i].Name}: {endpointList[i].BaseUrl}{defaultMarker}");
     }
 
-    Console.Write("Select endpoint number (leave blank to keep active): ");
+    Console.Write("Select endpoint number (leave blank to use default): ");
     var selectedIndexInput = Console.ReadLine();
 
     ProviderEndpoint endpoint;
     if (string.IsNullOrWhiteSpace(selectedIndexInput))
     {
-        endpoint = await configurationService.GetActiveEndpointAsync(CancellationToken.None);
+        endpoint = endpointList.FirstOrDefault(e =>
+            string.Equals(e.Name, providerOptions.Active, StringComparison.OrdinalIgnoreCase))
+            ?? endpointList[0];
     }
     else
     {
         if (!int.TryParse(selectedIndexInput, out var selectedIndex) ||
             selectedIndex < 1 ||
-            selectedIndex > endpoints.Count)
+            selectedIndex > endpointList.Count)
         {
-            Console.WriteLine($"Invalid selection '{selectedIndexInput}'. Expected a number between 1 and {endpoints.Count}.");
+            Console.WriteLine($"Invalid selection '{selectedIndexInput}'. Expected a number between 1 and {endpointList.Count}.");
             return;
         }
 
-        var selectedEndpoint = endpoints[selectedIndex - 1];
-        endpoint = await configurationService.SetActiveEndpointAsync(selectedEndpoint.Name, CancellationToken.None);
+        endpoint = endpointList[selectedIndex - 1];
     }
 
     Console.WriteLine($"Using endpoint: {endpoint.Name} ({endpoint.BaseUrl})");
@@ -159,7 +158,7 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine("An unexpected error occurred while checking provider status.");
+    Console.WriteLine("An unexpected error occurred.");
     Console.WriteLine(ex.Message);
 }
 

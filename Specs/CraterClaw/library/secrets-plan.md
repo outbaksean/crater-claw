@@ -22,7 +22,7 @@
 ## Phase 1: Packages, Options Types, Validation, and DI
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
 - Introduce `IConfiguration` and `IOptions<ProviderOptions>` as the new configuration backbone and wire everything through DI. The old services remain in place until Phase 2.
@@ -89,7 +89,7 @@
 ## Phase 2: Remove Old Services, Update Console, and Update Tests
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
 - Remove `IProviderConfigurationService`, `FileProviderConfigurationService`, and `ProviderConfiguration`. Update all consumers to use `IOptions<ProviderOptions>`. Update the console to use per-session active selection. Remove file-based tests.
