@@ -44,6 +44,7 @@
 - [CraterClaw/library/secrets-spec.md](CraterClaw/library/secrets-spec.md): Resolve `${VAR_NAME}` references in config values from OS user-level environment variables at point of use
 - [CraterClaw/library/mcp-config-spec.md](CraterClaw/library/mcp-config-spec.md): Load MCP server definitions from configuration and check their availability on demand
 - [CraterClaw/library/behavior-profiles-spec.md](CraterClaw/library/behavior-profiles-spec.md): Fixed catalog of curated profiles combining model guidance and permitted MCP server sets
+- [CraterClaw/library/logging-spec.md](CraterClaw/library/logging-spec.md): Structured logging foundation for all core services with a rolling file sink in the console harness
 - [CraterClaw/library/agentic-execution-spec.md](CraterClaw/library/agentic-execution-spec.md): Orchestrate a model tool-use loop against MCP-backed tools within a selected behavior profile
 
 ## Status
