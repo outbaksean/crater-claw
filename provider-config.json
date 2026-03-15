@@ -3,7 +3,19 @@
         {
             "name": "local",
             "baseUrl": "http://localhost:11434"
+        },
+        {
+            "name": "wslWithWslIp",
+            "baseUrl": "http://172.24.209.117:11435"
+        },
+        {
+            "name": "wslWithHostIp",
+            "baseUrl": "http://172.24.208.1:11435"
+        },
+        {
+            "name": "wslWithLocalhostIp",
+            "baseUrl": "http://localhost:11435"
         }
     ],
-    "activeProviderName": "local"
+    "activeProviderName": "wslWithLocalhostIp"
 }
