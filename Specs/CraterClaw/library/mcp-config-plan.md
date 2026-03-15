@@ -9,7 +9,7 @@
 - Validation lives on a `McpConfiguration` wrapper record (mirroring `ProviderConfiguration`), not on `McpServerDefinition` directly, so the full list can be validated together for cross-record rules like uniqueness.
 - The JSON transport value is stored as a lowercase string (`"http"`, `"stdio"`). The enum serializes/deserializes using a custom converter to avoid relying on numeric enum values.
 - Http availability: HTTP GET to the server's base URL. Any HTTP response (including error codes) is treated as reachable; only a connection failure or timeout is unreachable. This avoids coupling the check to any specific MCP endpoint path.
-- Stdio availability: walk `PATH` environment variable entries looking for the command file; also accept absolute paths directly. No process is spawned. `PATHEXT` extensions are checked on Windows.
+- Stdio availability: walk `PATH` environment variable entries looking for the command file; also accept absolute paths directly. No process is spawned. `PATHEXT` extensions are checked on Windows. For `uvx`-based servers, this means checking that `uvx` is on PATH — the MCP package itself is downloaded by `uvx` on first invocation and is not checked here.
 - `IMcpConfigurationService` is registered as Singleton (same pattern as `IProviderConfigurationService`). `IMcpAvailabilityService` is registered as Transient.
 - The MCP config file path is passed to `AddCraterClawCore()` as a new optional parameter `mcpConfigurationPath`, defaulting to `./mcp-config.json`.
 
@@ -36,6 +36,7 @@
   - `BaseUrl` (string?) — required when Transport is Http; must be a valid absolute URI
   - `Command` (string?) — required when Transport is Stdio
   - `Args` (IReadOnlyList<string>?) — optional, Stdio only
+  - `Env` (IReadOnlyDictionary<string, string>?) — optional, Stdio only; passed as environment variables to the spawned process
   - `Enabled` (bool)
 - `McpConfiguration` sealed record in `CraterClaw.Core`:
   - `Servers` (IReadOnlyList\<McpServerDefinition\>)
@@ -62,14 +63,14 @@
 ### Tests
 
 `McpConfigurationContractTests`:
-- Valid configuration with one Http server and one Stdio server passes validation.
+- Valid configuration with a Stdio server including `Env` entries passes validation.
 - Duplicate server names (case-insensitive) produce a validation error.
 - Http server with missing or malformed `BaseUrl` produces a validation error.
 - Stdio server with empty `Command` produces a validation error.
 
 `FileMcpConfigurationServiceTests`:
-- Load returns correct `McpConfiguration` for valid JSON.
-- Save persists configuration and can be reloaded with consistent values.
+- Load returns correct `McpConfiguration` for valid JSON including `env` entries on a Stdio server.
+- Save persists configuration and can be reloaded with consistent values including `env` entries.
 - Load throws `InvalidOperationException` for malformed JSON.
 - Load throws `FileNotFoundException` when file does not exist.
 
@@ -125,11 +126,10 @@
 - No new tests required; Phase 1 tests cover service behavior.
 
 ### Manual Verification Plan
-- Prerequisites: qBitTorrent MCP server running in SSE mode and reachable (see mcp-config-prereqs.md).
-- Create `mcp-config.json` with the qBitTorrent server as an Http entry pointing to the running SSE server.
-- Run the console harness and confirm the server appears in the numbered list.
-- Select it and confirm the availability result is displayed.
-- Stop the MCP server, repeat, and confirm an unavailable result is displayed.
+- Prerequisites: `uv` installed on this machine; qBitTorrent WebUI reachable from this machine (see mcp-config-prereqs.md).
+- Create `mcp-config.json` with the qBitTorrent server configured as a Stdio entry using `uvx` and the appropriate `env` values.
+- Run the console harness and confirm the server appears in the numbered list with transport and enabled status.
+- Select it and confirm the availability check detects `uvx` on PATH and reports available.
 
 ---
 
