@@ -53,11 +53,14 @@
 }
 ```
 
+## Prerequisites
+- See [mcp-config-prereqs.md](mcp-config-prereqs.md) for required external services before implementing or manually verifying this spec.
+
 ## Manual Verification
-- Create a config file with at least one HTTP server and one stdio server.
-- Run the console harness and confirm both appear in the server list with correct transport type and enabled status.
-- Trigger an availability check on the HTTP server and confirm the result is displayed.
-- Trigger an availability check on the stdio server and confirm the command existence check result is displayed.
+- Dependencies: qBitTorrent MCP server running in SSE mode and reachable from this host (see mcp-config-prereqs.md).
+- Create a config file with the qBitTorrent MCP server as an HTTP entry.
+- Run the console harness and confirm the server appears in the list with correct transport type and enabled status.
+- Trigger an availability check and confirm the result is displayed.
 
 ## Status
 - Planning
