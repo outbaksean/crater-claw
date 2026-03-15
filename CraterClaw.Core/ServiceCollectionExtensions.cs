@@ -27,6 +27,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IModelListingService, OllamaModelListingService>();
         services.AddTransient<IModelExecutionService, OllamaModelExecutionService>();
         services.AddTransient<IMcpAvailabilityService, McpAvailabilityService>();
+        services.AddSingleton<IBehaviorProfileService, BehaviorProfileService>();
 
         return services;
     }

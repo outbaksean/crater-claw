@@ -23,6 +23,7 @@ var statusService = provider.GetRequiredService<IProviderStatusService>();
 var modelListingService = provider.GetRequiredService<IModelListingService>();
 var executionService = provider.GetRequiredService<IModelExecutionService>();
 var mcpAvailabilityService = provider.GetRequiredService<IMcpAvailabilityService>();
+var behaviorProfileService = provider.GetRequiredService<IBehaviorProfileService>();
 
 try
 {
@@ -206,6 +207,38 @@ try
                 else
                     Console.WriteLine($"Unavailable: {availability.Name} - {availability.ErrorMessage}");
             }
+        }
+    }
+    var profiles = behaviorProfileService.GetAll();
+    Console.WriteLine($"Behavior profiles ({profiles.Count}):");
+    for (var i = 0; i < profiles.Count; i++)
+    {
+        Console.WriteLine($"{i + 1}. [{profiles[i].Id}] {profiles[i].Name} - {profiles[i].Description}");
+    }
+
+    Console.Write("Select profile number (leave blank to skip): ");
+    var profileIndexInput = Console.ReadLine();
+
+    if (!string.IsNullOrWhiteSpace(profileIndexInput))
+    {
+        if (!int.TryParse(profileIndexInput, out var profileIndex) ||
+            profileIndex < 1 ||
+            profileIndex > profiles.Count)
+        {
+            Console.WriteLine($"Invalid selection '{profileIndexInput}'. Expected a number between 1 and {profiles.Count}.");
+        }
+        else
+        {
+            var selectedProfile = profiles[profileIndex - 1];
+            var selectedProfileId = selectedProfile.Id;
+
+            var permitted = selectedProfile.AllowedMcpServerNames;
+            if (permitted.Count == 0)
+                Console.WriteLine("Permitted MCP servers: (none)");
+            else
+                Console.WriteLine($"Permitted MCP servers: {string.Join(", ", permitted)}");
+
+            _ = selectedProfileId;
         }
     }
 }

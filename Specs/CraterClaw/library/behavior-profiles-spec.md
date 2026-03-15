@@ -35,4 +35,4 @@
 - Select a profile and confirm the permitted MCP server list is displayed.
 
 ## Status
-- Planning
+- Done

@@ -19,7 +19,7 @@
 ## Phase 1: Contracts and Tests
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
 - Define `BehaviorProfile`, `IBehaviorProfileService`, and write tests against the implementation that Phase 2 will produce.
@@ -59,7 +59,7 @@
 ## Phase 2: Implementation, DI Registration, and Console Wiring
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
 - Implement `BehaviorProfileService` with the hardcoded catalog, register it in DI, and add the profile selection flow to the console harness.
