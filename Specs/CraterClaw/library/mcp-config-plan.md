@@ -5,137 +5,102 @@
 
 ## Decisions
 
-- `McpServerDefinition` is a flat sealed record with all transport-specific fields as nullable properties. Transport-specific fields that do not apply to the selected transport are validated away rather than using a discriminated union hierarchy, keeping the type simple to construct and serialize.
-- Validation lives on a `McpConfiguration` wrapper record (mirroring `ProviderConfiguration`), not on `McpServerDefinition` directly, so the full list can be validated together for cross-record rules like uniqueness.
-- The JSON transport value is stored as a lowercase string (`"http"`, `"stdio"`). The enum serializes/deserializes using a custom converter to avoid relying on numeric enum values.
-- Http availability: HTTP GET to the server's base URL. Any HTTP response (including error codes) is treated as reachable; only a connection failure or timeout is unreachable. This avoids coupling the check to any specific MCP endpoint path.
-- Stdio availability: walk `PATH` environment variable entries looking for the command file; also accept absolute paths directly. No process is spawned. `PATHEXT` extensions are checked on Windows. For `uvx`-based servers, this means checking that `uvx` is on PATH — the MCP package itself is downloaded by `uvx` on first invocation and is not checked here.
-- `IMcpConfigurationService` is registered as Singleton (same pattern as `IProviderConfigurationService`). `IMcpAvailabilityService` is registered as Transient.
-- The MCP config file path is passed to `AddCraterClawCore()` as a new optional parameter `mcpConfigurationPath`, defaulting to `./mcp-config.json`.
+- MCP configuration uses `IOptions<McpOptions>` bound from the `mcp` section of `craterclaw.json`, consistent with the secrets spec. `IMcpConfigurationService` and `FileMcpConfigurationService` are not implemented.
+- The `mcp.servers` sub-key holds a dictionary of `McpServerOptions` POCOs keyed by server name. This keeps user secret paths stable (`mcp:servers:qbittorrent:env:QBITTORRENT_PASS`).
+- Sensitive env values (passwords, URLs) are left as empty strings in `craterclaw.json`. User secrets or OS environment variables supply real values at runtime.
+- `McpServerDefinition` is an immutable sealed record used at runtime. It is constructed from `McpServerOptions` + dictionary key (name) at the call site.
+- `McpOptionsValidator` validates transport-specific fields (Http requires valid BaseUrl; Stdio requires non-empty Command). An empty `Servers` dictionary is valid — MCP is optional.
+- Http availability: GET the server's BaseUrl; any response is treated as available. Only `HttpRequestException` is unreachable.
+- Stdio availability: if Command is rooted, check `File.Exists`. Otherwise walk `PATH` entries (with `PATHEXT` extensions on Windows). No process is spawned.
+- `IMcpAvailabilityService` is registered as Transient. No singleton configuration service is needed since options are injected directly.
+- The `McpTransport` enum value is bound from a string in JSON (`"Stdio"`, `"Http"`). IConfiguration's enum binding is case-insensitive.
 
 ## Overview
-- This plan implements the MCP configuration spec in two phases.
-- Phase 1 defines contracts, validation, and tests. Phase 2 adds implementations, DI registration, and console wiring.
+- Phase 1 defines contract types, options POCOs, validation, and tests.
+- Phase 2 implements `McpAvailabilityService`, updates DI and console wiring, and adds the `mcp` section to `craterclaw.json`.
 
 ---
 
-## Phase 1: Contracts, Validation, and Tests
+## Phase 1: Contracts, Options Types, Validation, and Tests
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
-- Define all public contract types, validation rules, and automated tests that will drive the Phase 2 implementations.
+- Define all public contract types, options POCOs, the validator, and tests.
 
 ### Contract
 - `McpTransport` enum in `CraterClaw.Core`: `Http`, `Stdio`
-- `McpServerDefinition` sealed record in `CraterClaw.Core`:
-  - `Name` (string)
-  - `Label` (string)
-  - `Transport` (McpTransport)
-  - `BaseUrl` (string?) — required when Transport is Http; must be a valid absolute URI
-  - `Command` (string?) — required when Transport is Stdio
-  - `Args` (IReadOnlyList<string>?) — optional, Stdio only
-  - `Env` (IReadOnlyDictionary<string, string>?) — optional, Stdio only; passed as environment variables to the spawned process
-  - `Enabled` (bool)
-- `McpConfiguration` sealed record in `CraterClaw.Core`:
-  - `Servers` (IReadOnlyList\<McpServerDefinition\>)
-  - `IReadOnlyList<string> Validate()` — returns validation errors
-  - `void ValidateOrThrow()` — throws `InvalidOperationException` if invalid
-  - Validation rules:
-    - Server names are unique (case-insensitive)
-    - Each server name and label are non-empty
-    - Http servers have a valid absolute `BaseUrl`
-    - Stdio servers have a non-empty `Command`
+- `McpServerDefinition` sealed record in `CraterClaw.Core` (runtime type):
+  - `Name` (string), `Label` (string), `Transport` (McpTransport), `BaseUrl` (string?), `Command` (string?), `Args` (IReadOnlyList<string>?), `Env` (IReadOnlyDictionary<string, string>?), `Enabled` (bool)
 - `McpAvailabilityResult` sealed record in `CraterClaw.Core`: `Name` (string), `IsAvailable` (bool), `ErrorMessage` (string?)
-- `IMcpConfigurationService` interface in `CraterClaw.Core`:
-  - `Task<McpConfiguration> LoadAsync(CancellationToken cancellationToken)`
-  - `Task SaveAsync(McpConfiguration configuration, CancellationToken cancellationToken)`
 - `IMcpAvailabilityService` interface in `CraterClaw.Core`:
   - `Task<McpAvailabilityResult> CheckAvailabilityAsync(McpServerDefinition server, CancellationToken cancellationToken)`
+- `McpServerOptions` sealed class in `CraterClaw.Core` (mutable, for IConfiguration binding):
+  - `Label` (string), `Transport` (McpTransport), `BaseUrl` (string?), `Command` (string?), `Args` (List<string>?), `Env` (Dictionary<string, string>?), `Enabled` (bool)
+- `McpOptions` sealed class in `CraterClaw.Core` (mutable, for IConfiguration binding):
+  - `Servers` (Dictionary<string, McpServerOptions>)
+- `McpOptionsValidator` (internal, sealed) implementing `IValidateOptions<McpOptions>`:
+  - Http servers require a valid absolute BaseUrl
+  - Stdio servers require a non-empty Command
+  - Each server must have a non-empty Label
+  - Empty Servers dictionary passes validation
 
 ### Tasks
-- Add `McpTransport.cs`, `McpServerDefinition.cs`, `McpConfiguration.cs`, `McpAvailabilityResult.cs`, `IMcpConfigurationService.cs`, `IMcpAvailabilityService.cs` in `CraterClaw.Core`.
-- Add `McpConfigurationContractTests.cs` in `CraterClaw.Core.Tests`.
-- Add `FileMcpConfigurationServiceTests.cs` in `CraterClaw.Core.Tests`.
-- Add `McpAvailabilityServiceTests.cs` in `CraterClaw.Core.Tests`.
+- Add `McpTransport.cs`, `McpServerDefinition.cs`, `McpAvailabilityResult.cs`, `IMcpAvailabilityService.cs` in `CraterClaw.Core`.
+- Add `McpServerOptions.cs`, `McpOptions.cs`, `McpOptionsValidator.cs` in `CraterClaw.Core`.
+- Add `McpOptionsValidatorTests.cs` and `McpAvailabilityServiceTests.cs` in `CraterClaw.Core.Tests`.
 
 ### Tests
 
-`McpConfigurationContractTests`:
-- Valid configuration with a Stdio server including `Env` entries passes validation.
-- Duplicate server names (case-insensitive) produce a validation error.
-- Http server with missing or malformed `BaseUrl` produces a validation error.
-- Stdio server with empty `Command` produces a validation error.
-
-`FileMcpConfigurationServiceTests`:
-- Load returns correct `McpConfiguration` for valid JSON including `env` entries on a Stdio server.
-- Save persists configuration and can be reloaded with consistent values including `env` entries.
-- Load throws `InvalidOperationException` for malformed JSON.
-- Load throws `FileNotFoundException` when file does not exist.
+`McpOptionsValidatorTests`:
+- Valid Stdio server with env entries passes validation.
+- Valid Http server with absolute BaseUrl passes validation.
+- Http server with invalid BaseUrl fails validation.
+- Stdio server with empty Command fails validation.
+- Empty Servers dictionary passes validation.
 
 `McpAvailabilityServiceTests`:
 - Http server returns `IsAvailable = true` when HTTP GET receives any response.
-- Http server returns `IsAvailable = false` when connection is refused (HttpRequestException).
+- Http server returns `IsAvailable = false` when connection fails (HttpRequestException).
+- Propagates cancellation during Http check.
 - Stdio server returns `IsAvailable = true` when command is found on PATH.
-- Stdio server returns `IsAvailable = false` when command is not found on PATH or as an absolute path.
-- Propagates cancellation when token is cancelled during Http check.
-
-### Manual Verification
-- `dotnet build CraterClaw.slnx` succeeds.
-- `dotnet test CraterClaw.slnx --no-build` passes with all new tests included.
+- Stdio server returns `IsAvailable = false` when command is not found.
 
 ---
 
-## Phase 2: Implementations, DI Registration, and Console Wiring
+## Phase 2: Implementation, DI Registration, and Console Wiring
 
 ### Status
-- Not Started
+- Done
 
 ### Goal
-- Implement `FileMcpConfigurationService` and `McpAvailabilityService`, register both in DI, and add a console flow to list servers and check availability.
+- Implement `McpAvailabilityService`, register in DI, add `mcp` section to `craterclaw.json`, update console.
 
 ### Contract
 - No new public surface beyond Phase 1.
-- JSON uses camelCase property names and a lowercase string for `transport` (`"http"` or `"stdio"`).
-- Console lists servers numbered with label, transport type, and enabled status. Prompts for a selection by number to trigger an availability check and displays the result.
+- Console lists MCP servers numbered: `{n}. {label}  ({transport}, {enabled/disabled})`.
+- Prompts for selection to trigger availability check and displays result.
 
 ### Tasks
-- Add `FileMcpConfigurationService.cs` (internal, sealed) in `CraterClaw.Core`:
-  - Inject config file path via constructor.
-  - Use `JsonNamingPolicy.CamelCase` and a `JsonStringEnumConverter` with lowercase naming for `McpTransport`.
-  - Deserialize via private DTOs; validate on load; throw on invalid content.
-  - Create parent directory on save if needed.
-- Add `McpAvailabilityService.cs` (internal, sealed) in `CraterClaw.Core`:
-  - Inject `HttpClient` via constructor.
-  - Http check: GET `server.BaseUrl`; catch `HttpRequestException` as unavailable.
-  - Stdio check: if `Command` is rooted, check `File.Exists`; otherwise walk `PATH` and `PATHEXT` entries.
-- Update `ServiceCollectionExtensions.AddCraterClawCore()`:
-  - Add `string? mcpConfigurationPath = null` parameter.
-  - Register `IMcpConfigurationService` as Singleton → `FileMcpConfigurationService`.
-  - Register `IMcpAvailabilityService` as Transient → `McpAvailabilityService`.
-  - Default path: `./mcp-config.json`.
-- Update `CraterClaw.Console/Program.cs`:
-  - Accept an optional second argument for the MCP config path; prompt if not provided; default to `./mcp-config.json`.
-  - After the execution flow, load MCP config and display servers numbered: `{n}. {label}  ({transport}, {enabled/disabled})`.
-  - If no servers are configured, display `No MCP servers configured.` and skip.
-  - Prompt `Select server number to check availability (leave blank to skip):`.
-  - Display `Available: {name}` or `Unavailable: {name} — {error}`.
+- Add `McpAvailabilityService.cs` (internal, sealed) in `CraterClaw.Core`.
+- Update `ServiceCollectionExtensions.AddCraterClawCore()` to register `McpOptions` and `IMcpAvailabilityService`.
+- Add `mcp.servers` section to `craterclaw.json` with placeholder env values.
+- Update `CraterClaw.Console/Program.cs` to display MCP servers and run availability checks.
 
 ### Tests
-- No new tests required; Phase 1 tests cover service behavior.
+- No new tests required; Phase 1 covers all service behavior.
 
 ### Manual Verification Plan
-- Prerequisites: `uv` installed on this machine; qBitTorrent WebUI reachable from this machine (see mcp-config-prereqs.md).
-- Create `mcp-config.json` with the qBitTorrent server configured as a Stdio entry using `uvx` and the appropriate `env` values.
-- Run the console harness and confirm the server appears in the numbered list with transport and enabled status.
+- Prerequisites: `uv` installed on this machine (see mcp-config-prereqs.md).
+- Run the console and confirm the qBitTorrent server appears in the MCP list.
 - Select it and confirm the availability check detects `uvx` on PATH and reports available.
+- Set `dotnet user-secrets set "mcp:servers:qbittorrent:env:QBITTORRENT_URL" "http://..."` and confirm it appears in the options value at runtime (visible via a debug breakpoint or future logging).
 
 ---
 
 ## Completion Criteria
 - Both phase statuses are marked Done.
-- `CraterClaw.Core` and `CraterClaw.Console` build successfully.
 - All automated tests pass.
-- Manual verification confirms availability check works against the live qBitTorrent MCP server.
+- Manual verification confirms availability check works.
 - `mcp-config-spec.md` Status is updated to Done.

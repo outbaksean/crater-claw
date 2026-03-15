@@ -62,4 +62,4 @@
 - Trigger an availability check and confirm `uvx` is detected as available.
 
 ## Status
-- Planning
+- Done

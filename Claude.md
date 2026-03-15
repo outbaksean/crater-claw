@@ -54,7 +54,7 @@ Specs/
 - Define Contract: Generate or update interfaces, types, or API signatures.
 - Write Tests: Generate automated tests based on the Contract and Spec (before implementation).
 - Implement: Generate the code to satisfy the tests.
-- README Sync: If steps to configure and run the application have changed, update the README under the Current State header. 
+- README Sync: After every phase, update the README to reflect the current state. The README must always be accurate and complete enough for a new developer to configure and run the application without reading the specs. Update: the Current State section to describe all working features; the Prerequisites section if new dependencies were added; the Configuration section if config files, keys, or secret paths changed; the Console Flow section if the interactive experience changed. Do not leave outdated instructions in place.
 - Manual Verify: The user reviews and does the "Manual Verification Plan" defined in the plan.
 - Sync Spec: If implementation forced a logic change, update the .md spec/plan and any relevant higher level specs.
 - Close Session: Mark Phase status as Done.

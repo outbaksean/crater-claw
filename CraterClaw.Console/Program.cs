@@ -2,6 +2,7 @@ using CraterClaw.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using System.Collections.ObjectModel;
 
 var configPath = Path.Combine(AppContext.BaseDirectory, "craterclaw.json");
 
@@ -17,9 +18,11 @@ services.AddCraterClawCore(configuration);
 
 using var provider = services.BuildServiceProvider();
 var providerOptions = provider.GetRequiredService<IOptions<ProviderOptions>>().Value;
+var mcpOptions = provider.GetRequiredService<IOptions<McpOptions>>().Value;
 var statusService = provider.GetRequiredService<IProviderStatusService>();
 var modelListingService = provider.GetRequiredService<IModelListingService>();
 var executionService = provider.GetRequiredService<IModelExecutionService>();
+var mcpAvailabilityService = provider.GetRequiredService<IMcpAvailabilityService>();
 
 try
 {
@@ -154,6 +157,56 @@ try
     {
         Console.WriteLine($"Unreachable: {endpoint.BaseUrl}");
         Console.WriteLine(status.ErrorMessage ?? "No error details provided.");
+    }
+
+    var mcpServers = mcpOptions.Servers
+        .Select(kvp => new McpServerDefinition(
+            kvp.Key,
+            kvp.Value.Label,
+            kvp.Value.Transport,
+            kvp.Value.BaseUrl,
+            kvp.Value.Command,
+            kvp.Value.Args?.AsReadOnly(),
+            kvp.Value.Env as IReadOnlyDictionary<string, string>,
+            kvp.Value.Enabled))
+        .ToList();
+
+    if (mcpServers.Count == 0)
+    {
+        Console.WriteLine("No MCP servers configured.");
+    }
+    else
+    {
+        Console.WriteLine($"Configured MCP servers ({mcpServers.Count}):");
+        for (var i = 0; i < mcpServers.Count; i++)
+        {
+            var enabledStatus = mcpServers[i].Enabled ? "enabled" : "disabled";
+            Console.WriteLine($"{i + 1}. {mcpServers[i].Label}  ({mcpServers[i].Transport}, {enabledStatus})");
+        }
+
+        Console.Write("Select server number to check availability (leave blank to skip): ");
+        var serverIndexInput = Console.ReadLine();
+
+        if (!string.IsNullOrWhiteSpace(serverIndexInput))
+        {
+            if (!int.TryParse(serverIndexInput, out var serverIndex) ||
+                serverIndex < 1 ||
+                serverIndex > mcpServers.Count)
+            {
+                Console.WriteLine($"Invalid selection '{serverIndexInput}'. Expected a number between 1 and {mcpServers.Count}.");
+            }
+            else
+            {
+                var selectedServer = mcpServers[serverIndex - 1];
+                var availability = await mcpAvailabilityService.CheckAvailabilityAsync(
+                    selectedServer, CancellationToken.None);
+
+                if (availability.IsAvailable)
+                    Console.WriteLine($"Available: {availability.Name}");
+                else
+                    Console.WriteLine($"Unavailable: {availability.Name} - {availability.ErrorMessage}");
+            }
+        }
     }
 }
 catch (Exception ex)

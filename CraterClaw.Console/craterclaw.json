@@ -7,5 +7,22 @@
             "wslWithHostIp": { "baseUrl": "http://172.24.208.1:11435" },
             "wslWithLocalhostIp": { "baseUrl": "http://localhost:11435" }
         }
+    },
+    "mcp": {
+        "servers": {
+            "qbittorrent": {
+                "label": "qBitTorrent",
+                "transport": "Stdio",
+                "command": "uvx",
+                "args": [ "--from", "git+https://github.com/jmagar/yarr-mcp", "qbittorrent-mcp-server" ],
+                "env": {
+                    "QBITTORRENT_URL": "",
+                    "QBITTORRENT_USER": "",
+                    "QBITTORRENT_PASS": "",
+                    "QBITTORRENT_MCP_TRANSPORT": "stdio"
+                },
+                "enabled": true
+            }
+        }
     }
 }
