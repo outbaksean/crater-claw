@@ -9,20 +9,11 @@
         }
     },
     "mcp": {
-        "servers": {
-            "qbittorrent": {
-                "label": "qBitTorrent",
-                "transport": "Stdio",
-                "command": "uvx",
-                "args": [ "--from", "git+https://github.com/jmagar/yarr-mcp", "qbittorrent-mcp-server" ],
-                "env": {
-                    "QBITTORRENT_URL": "",
-                    "QBITTORRENT_USER": "",
-                    "QBITTORRENT_PASS": "",
-                    "QBITTORRENT_MCP_TRANSPORT": "stdio"
-                },
-                "enabled": true
-            }
-        }
+        "servers": {}
+    },
+    "qbittorrent": {
+        "baseUrl": "",
+        "username": "",
+        "password": ""
     }
 }

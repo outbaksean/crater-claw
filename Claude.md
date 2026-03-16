@@ -65,6 +65,7 @@ Specs/
 - Integration Glue: A parent spec must define the I/O schemas relevant to the child spec currently being implemented. It does not need to define contracts for scope that has not yet been refined into an active child spec.
 - Red-Green-Sync: Implementation is only complete when tests pass and the documentation matches the final code.
 - Completion: A Spec is marked Done only when all associated Phases or Child Specs are Done.
+- External API Verification: If a plan references a third-party API with "confirm at implementation time", that is a signal the plan is not ready. Verify the exact API (method signatures, property names, available overloads) against the installed package version before writing the plan. A plan may not enter implementation with unverified external API assumptions.
 
 
 ## Testing

@@ -46,6 +46,8 @@
 - [CraterClaw/library/behavior-profiles-spec.md](CraterClaw/library/behavior-profiles-spec.md): Fixed catalog of curated profiles combining model guidance and permitted MCP server sets
 - [CraterClaw/library/logging-spec.md](CraterClaw/library/logging-spec.md): Structured logging foundation for all core services with a rolling file sink in the console harness
 - [CraterClaw/library/agentic-execution-spec.md](CraterClaw/library/agentic-execution-spec.md): Orchestrate a model tool-use loop against MCP-backed tools within a selected behavior profile
+- [CraterClaw/library/sk-interactive-execution-spec.md](CraterClaw/library/sk-interactive-execution-spec.md): Replace OllamaModelExecutionService with a Semantic Kernel-backed implementation for consistency with the agentic stack
+- [CraterClaw/library/qbittorrent-plugin-spec.md](CraterClaw/library/qbittorrent-plugin-spec.md): Semantic Kernel kernel plugin exposing qBitTorrent WebUI operations as kernel functions for the agentic tool-use loop
 
 ## Status
 - Planning
