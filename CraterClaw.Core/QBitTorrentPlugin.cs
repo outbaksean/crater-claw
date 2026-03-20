@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Net;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
@@ -91,7 +93,16 @@ public sealed class QBitTorrentPlugin(
             var response = await SendAuthenticatedAsync(
                 () => new HttpRequestMessage(HttpMethod.Get, $"{_options.BaseUrl}/api/v2/torrents/info"),
                 cancellationToken);
-            return await response.Content.ReadAsStringAsync(cancellationToken);
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            var torrents = JsonNode.Parse(json)?.AsArray();
+            if (torrents is null) return "[]";
+            var trimmed = torrents.Select(t => new
+            {
+                name = t?["name"]?.ToString(),
+                state = t?["state"]?.ToString(),
+                added_on = t?["added_on"]?.GetValue<long>()
+            });
+            return JsonSerializer.Serialize(trimmed);
         }
         catch (Exception ex)
         {

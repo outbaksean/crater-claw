@@ -16,7 +16,7 @@ public sealed class SemanticKernelAgenticExecutionServiceTests
             new ChatMessageContent(AuthorRole.Assistant, "Task complete."));
         var service = BuildService(fake);
 
-        var request = new AgenticRequest("test-model", "Do a task.", [], 10);
+        var request = new AgenticRequest("test-model", "Do a task.", [], MaxIterations: 10);
         var result = await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
 
         Assert.Equal("Task complete.", result.Content);
@@ -30,14 +30,14 @@ public sealed class SemanticKernelAgenticExecutionServiceTests
             new ChatMessageContent(AuthorRole.Assistant, "Done."));
         var service = BuildService(fake);
 
-        var request = new AgenticRequest("test-model", "Simple question.", [], 10);
+        var request = new AgenticRequest("test-model", "Simple question.", [], MaxIterations: 10);
         var result = await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
 
         Assert.Empty(result.ToolsInvoked);
     }
 
     [Fact]
-    public async Task ExecuteAsync_ReturnsIterationLimitReached_WhenLastMessageHasFunctionCall()
+    public async Task ExecuteAsync_ReturnsIterationLimitReached_WhenMaxIterationsExhausted()
     {
         var items = new ChatMessageContentItemCollection
         {
@@ -47,30 +47,39 @@ public sealed class SemanticKernelAgenticExecutionServiceTests
             new ChatMessageContent(AuthorRole.Assistant, items));
         var service = BuildService(fake);
 
-        var request = new AgenticRequest("test-model", "Do something.", [], 10);
+        var request = new AgenticRequest("test-model", "Do something.", [], MaxIterations: 1);
         var result = await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
 
         Assert.Equal(AgenticFinishReason.IterationLimitReached, result.FinishReason);
     }
 
     [Fact]
-    public async Task ExecuteAsync_TracksToolsInvoked_WhenFunctionResultInHistory()
+    public async Task ExecuteAsync_TracksToolsInvoked_WhenFunctionIsCalledAndReturned()
     {
+        var functionCallItems = new ChatMessageContentItemCollection
+        {
+            new FunctionCallContent("GetValue", "TestPlugin", "call-1")
+        };
         var fake = new FakeChatCompletionService(
-            new ChatMessageContent(AuthorRole.Assistant, "Here are your torrents."),
-            sideEffect: chatHistory =>
-            {
-                var toolMessage = new ChatMessageContent(AuthorRole.Tool, string.Empty);
-                toolMessage.Items.Add(new FunctionResultContent("ListTorrents", "QBitTorrent", "call-1", "[]"));
-                chatHistory.Add(toolMessage);
-            });
-        var service = BuildService(fake);
+            new ChatMessageContent(AuthorRole.Assistant, functionCallItems),
+            new ChatMessageContent(AuthorRole.Assistant, "The value is 42."));
 
-        var request = new AgenticRequest("test-model", "List torrents.", [], 10);
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton<IChatCompletionService>(fake);
+        var kernel = builder.Build();
+        kernel.Plugins.AddFromFunctions("TestPlugin",
+            [KernelFunctionFactory.CreateFromMethod(() => "42", "GetValue")]);
+
+        var service = new SemanticKernelAgenticExecutionService(
+            new FakeKernelFactory(kernel),
+            NullLogger<SemanticKernelAgenticExecutionService>.Instance);
+
+        var request = new AgenticRequest("test-model", "Get the value.", [], MaxIterations: 10);
         var result = await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
 
         Assert.Single(result.ToolsInvoked);
-        Assert.Equal("ListTorrents", result.ToolsInvoked[0]);
+        Assert.Equal("GetValue", result.ToolsInvoked[0]);
+        Assert.Equal("The value is 42.", result.Content);
     }
 
     private static SemanticKernelAgenticExecutionService BuildService(IChatCompletionService chatService)
@@ -89,9 +98,10 @@ public sealed class SemanticKernelAgenticExecutionServiceTests
     }
 
     private sealed class FakeChatCompletionService(
-        ChatMessageContent response,
-        Action<ChatHistory>? sideEffect = null) : IChatCompletionService
+        params ChatMessageContent[] responses) : IChatCompletionService
     {
+        private int _index;
+
         public IReadOnlyDictionary<string, object?> Attributes => new Dictionary<string, object?>();
 
         public Task<IReadOnlyList<ChatMessageContent>> GetChatMessageContentsAsync(
@@ -100,7 +110,7 @@ public sealed class SemanticKernelAgenticExecutionServiceTests
             Kernel? kernel = null,
             CancellationToken cancellationToken = default)
         {
-            sideEffect?.Invoke(chatHistory);
+            var response = responses[Math.Min(_index++, responses.Length - 1)];
             return Task.FromResult<IReadOnlyList<ChatMessageContent>>([response]);
         }
 

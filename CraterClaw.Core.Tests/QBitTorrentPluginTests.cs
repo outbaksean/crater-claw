@@ -52,19 +52,20 @@ public sealed class QBitTorrentPluginTests
     [Fact]
     public async Task ListTorrentsAsync_ReturnsJson_WhenAuthenticated()
     {
-        const string json = """[{"name":"test.torrent","hash":"abc123","state":"downloading"}]""";
+        const string json = """[{"name":"test.torrent","state":"downloading","added_on":1700000000}]""";
         var plugin = CreatePlugin(QueuedResponses(LoginOkResponse(), JsonResponse(json)));
 
         var result = await plugin.ListTorrentsAsync();
 
         Assert.DoesNotContain("Error:", result);
-        Assert.Contains("abc123", result);
+        Assert.Contains("test.torrent", result);
+        Assert.Contains("downloading", result);
     }
 
     [Fact]
     public async Task ListTorrentsAsync_ReauthenticatesAndRetries_On403()
     {
-        const string json = """[{"name":"test.torrent","hash":"abc123"}]""";
+        const string json = """[{"name":"test.torrent","state":"downloading","added_on":1700000000}]""";
         var plugin = CreatePlugin(QueuedResponses(
             LoginOkResponse(),
             new HttpResponseMessage(HttpStatusCode.Forbidden),
@@ -74,7 +75,7 @@ public sealed class QBitTorrentPluginTests
         var result = await plugin.ListTorrentsAsync();
 
         Assert.DoesNotContain("Error:", result);
-        Assert.Contains("abc123", result);
+        Assert.Contains("test.torrent", result);
     }
 
     [Fact]

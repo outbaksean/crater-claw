@@ -280,16 +280,16 @@ try
                             selectedModelName,
                             taskPrompt.Trim(),
                             plugins,
-                            MaxIterations: 10);
+                            MaxIterations: 10,
+                            StreamChunk: Console.Write);
 
+                        Console.WriteLine("Response:");
                         var agenticResponse = await agenticExecutionService.ExecuteAsync(
                             endpoint, agenticRequest, CancellationToken.None);
+                        Console.WriteLine();
 
                         foreach (var tool in agenticResponse.ToolsInvoked)
                             Console.WriteLine($"Tool: {tool}");
-
-                        Console.WriteLine("Response:");
-                        Console.WriteLine(agenticResponse.Content);
                         Console.WriteLine($"Tools invoked: {agenticResponse.ToolsInvoked.Count}");
 
                         if (agenticResponse.FinishReason == AgenticFinishReason.IterationLimitReached)
