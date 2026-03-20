@@ -58,6 +58,15 @@ Depends on: qbittorrent-plugin (checkpoint 10)
 Vue TypeScript frontend (`CraterClaw.Web`) consuming the Web API. Provider selection, status check, model listing, interactive chat, behavior profile selection, and agentic task execution. MCP server UI excluded.
 Depends on: web-api (checkpoint 11)
 
+### 13. qbittorrent-search-tool
+
+Add a `SearchTorrents` kernel function to `QBitTorrentPlugin` that queries qBitTorrent's built-in search plugin system and returns matching torrent results.
+Depends on: qbittorrent-plugin (checkpoint 10)
+
+### 14. ide-debugging
+
+Configure VS Code launch configurations and pre-launch build tasks to support C# debugging for `CraterClaw.Console` and `CraterClaw.Api`.
+
 ## Planned
 
 ### behavior-refactor
@@ -72,11 +81,19 @@ Create and document usefull powershell aliases for running, testing, linting etc
 
 Verify automatic formatting commands do the same as vscode on save formatting
 
-### qbittorrent-search-tool
+### front-end-ux
 
-Allow qBittorrent searchesasdf
+Make the vue frontend ux nicer
 
-### ide-debugging
+### media-management-tool
 
-Configure vscode to allow C# debugging
+Add behavior to manage media. Download from FTP to network path mainly, to be used with the qBitTorrent behavior
+
+## logging-breakout-ollama-responses
+
+Log ollama requests and responses separately from main logging
+
+## thinking-mode-ollama
+
+Enable thinking mode by using OllamaPromptExecutionSettings instead of PromptExecutionSettings in SemanticKernelAgenticExecutionService and include "think" true in AdditionalProperties. Thinking should be toggleable by the user.
 

@@ -18,7 +18,9 @@
       "Bash(npm show:*)",
       "Bash(npm install:*)",
       "Bash(npm test:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(find /c/Users/seane/source/crater-claw -name *qbittorrent* -o -name *qbit* -o -name *QBit*)",
+      "Bash(grep -E \"\\\\.\\(cs|csproj\\)$\")"
     ]
   }
 }

@@ -225,6 +225,115 @@ public sealed class QBitTorrentPlugin(
         }
     }
 
+    [KernelFunction, Description("Search for torrents using installed search plugins. Returns a JSON array of results with fileName, fileUrl, fileSize, nbSeeders, nbLeechers, and siteUrl.")]
+    public async Task<string> SearchTorrentsAsync(
+        [Description("The search query string.")] string query,
+        [Description("The search category. Use 'all' for all categories, or a specific category: 'movies', 'music', 'software', 'games', 'anime', 'books'.")] string category = "all",
+        [Description("Maximum number of results to return. Defaults to 10.")] int maxResults = 10,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsConfigured) return "Error: qBitTorrent is not configured.";
+        try
+        {
+            var startResponse = await SendAuthenticatedAsync(
+                () => new HttpRequestMessage(HttpMethod.Post, $"{_options.BaseUrl}/api/v2/search/start")
+                {
+                    Content = new FormUrlEncodedContent([
+                        new KeyValuePair<string, string>("pattern", query),
+                        new KeyValuePair<string, string>("plugins", "all"),
+                        new KeyValuePair<string, string>("category", category)
+                    ])
+                },
+                cancellationToken);
+            var startJson = await startResponse.Content.ReadAsStringAsync(cancellationToken);
+            var searchId = JsonNode.Parse(startJson)?["id"]?.GetValue<int>()
+                ?? throw new InvalidOperationException("Search start did not return an id.");
+
+            logger.LogDebug("SearchTorrents started job {SearchId} for query '{Query}' category '{Category}'", searchId, query, category);
+
+            var searchComplete = false;
+            for (var i = 0; i < 30; i++)
+            {
+                if (i > 0)
+                    await Task.Delay(500, cancellationToken);
+
+                var statusResponse = await SendAuthenticatedAsync(
+                    () => new HttpRequestMessage(HttpMethod.Get, $"{_options.BaseUrl}/api/v2/search/status?id={searchId}"),
+                    cancellationToken);
+                var statusJson = await statusResponse.Content.ReadAsStringAsync(cancellationToken);
+                var statuses = JsonNode.Parse(statusJson)?.AsArray();
+                if (statuses is not null)
+                {
+                    foreach (var entry in statuses)
+                    {
+                        if (entry?["id"]?.GetValue<int>() == searchId &&
+                            string.Equals(entry["status"]?.ToString(), "Stopped", StringComparison.OrdinalIgnoreCase))
+                        {
+                            searchComplete = true;
+                            break;
+                        }
+                    }
+                }
+                if (searchComplete) break;
+            }
+
+            if (!searchComplete)
+                logger.LogWarning("SearchTorrents job {SearchId} did not complete within the poll limit", searchId);
+
+            var resultsResponse = await SendAuthenticatedAsync(
+                () => new HttpRequestMessage(HttpMethod.Get, $"{_options.BaseUrl}/api/v2/search/results?id={searchId}&limit={maxResults}&offset=0"),
+                cancellationToken);
+            var resultsJson = await resultsResponse.Content.ReadAsStringAsync(cancellationToken);
+            var resultsArray = JsonNode.Parse(resultsJson)?["results"]?.AsArray() ?? new JsonArray();
+
+            var projected = resultsArray.Select(r =>
+            {
+                var fileName = r?["fileName"]?.ToString() ?? string.Empty;
+                if (fileName.Length > 120) fileName = fileName[..120];
+
+                var fileUrl = r?["fileUrl"]?.ToString() ?? string.Empty;
+                if (fileUrl.StartsWith("magnet:", StringComparison.OrdinalIgnoreCase))
+                {
+                    var trIndex = fileUrl.IndexOf("&tr=", StringComparison.OrdinalIgnoreCase);
+                    if (trIndex >= 0) fileUrl = fileUrl[..trIndex];
+                }
+
+                return new
+                {
+                    fileName,
+                    fileUrl,
+                    fileSize = r?["fileSize"]?.GetValue<long>() ?? 0L,
+                    nbSeeders = r?["nbSeeders"]?.GetValue<int>() ?? 0,
+                    nbLeechers = r?["nbLeechers"]?.GetValue<int>() ?? 0,
+                    siteUrl = r?["siteUrl"]?.ToString() ?? string.Empty
+                };
+            }).ToList();
+
+            logger.LogInformation("SearchTorrents job {SearchId} returned {Count} results for query '{Query}'", searchId, projected.Count, query);
+
+            try
+            {
+                await SendAuthenticatedAsync(
+                    () => new HttpRequestMessage(HttpMethod.Post, $"{_options.BaseUrl}/api/v2/search/delete")
+                    {
+                        Content = new FormUrlEncodedContent([new KeyValuePair<string, string>("id", searchId.ToString())])
+                    },
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to delete search job {SearchId}", searchId);
+            }
+
+            return JsonSerializer.Serialize(projected);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "SearchTorrents failed");
+            return $"Error: {ex.Message}";
+        }
+    }
+
     public static IReadOnlyList<(string Name, string Description)> GetFunctionDescriptions() =>
     [
         ("ListTorrents", "List all torrents with name, hash, status, progress, and size."),
@@ -232,6 +341,7 @@ public sealed class QBitTorrentPlugin(
         ("PauseTorrent", "Pause a torrent by its hash."),
         ("ResumeTorrent", "Resume a paused torrent by its hash."),
         ("DeleteTorrent", "Delete a torrent by its hash, with optional file deletion."),
-        ("GetTransferStats", "Get current transfer statistics including speeds and session totals.")
+        ("GetTransferStats", "Get current transfer statistics including speeds and session totals."),
+        ("SearchTorrents", "Search for torrents using installed search plugins.")
     ];
 }
