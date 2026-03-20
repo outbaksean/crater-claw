@@ -53,12 +53,12 @@ Depends on: agentic-execution
 C# Web API (`CraterClaw.Api`) exposing library workflows: provider status, model listing, interactive execution, agentic execution, behavior profiles, MCP availability.
 Depends on: qbittorrent-plugin (checkpoint 10)
 
-## Planned
-
 ### 12. vue-frontend
 
-Vue TypeScript frontend (`CraterClaw.Web`) consuming the Web API. Mirrors the console harness user flows in a browser UI.
+Vue TypeScript frontend (`CraterClaw.Web`) consuming the Web API. Provider selection, status check, model listing, interactive chat, behavior profile selection, and agentic task execution. MCP server UI excluded.
 Depends on: web-api (checkpoint 11)
+
+## Planned
 
 ### behavior-refactor
 

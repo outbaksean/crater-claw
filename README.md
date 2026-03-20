@@ -21,6 +21,7 @@ Configuration is layered: `craterclaw.json` (committed, no secrets) -> dotnet us
 ## Prerequisites
 
 - .NET SDK 10.x
+- Node.js 20.x and npm 10.x (for `CraterClaw.Web`)
 - Ollama running locally or on the LAN for provider connectivity (optional for tests)
 - `uv` on PATH for stdio MCP server availability checks (optional)
 - qBitTorrent running with WebUI enabled for qBitTorrent plugin features (optional)
@@ -37,6 +38,7 @@ dotnet --version
 - `CraterClaw.Core`: library contracts, options types, and service implementations
 - `CraterClaw.Console`: console harness for manually exercising library workflows
 - `CraterClaw.Api`: ASP.NET Core minimal API exposing library workflows over HTTP
+- `CraterClaw.Web`: Vue 3 TypeScript frontend consuming the API
 - `CraterClaw.Core.Tests`: xUnit unit tests for the core library (no live Ollama required)
 - `CraterClaw.Api.Tests`: xUnit integration tests for the web API
 
@@ -56,6 +58,23 @@ dotnet test .\CraterClaw.slnx
 ```
 
 The test suite uses mocked HTTP and does not require a real Ollama instance or MCP server.
+
+## Run the Vue Frontend
+
+```powershell
+cd .\CraterClaw.Web
+npm install
+npm run dev
+```
+
+The dev server runs at `http://localhost:5173` by default. It expects `CraterClaw.Api` to be running at `http://localhost:5000`. To use a different API URL, set the `VITE_API_BASE_URL` environment variable before starting the dev server.
+
+Run Vue unit tests:
+
+```powershell
+cd .\CraterClaw.Web
+npm test
+```
 
 ## Run the Web API
 

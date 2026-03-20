@@ -62,3 +62,9 @@ nunit-*.xml
 .env
 *.secrets.json
 *.local.json
+
+# Node / Vue
+node_modules/
+dist/
+.vite/
+*.local
