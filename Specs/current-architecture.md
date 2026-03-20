@@ -3,7 +3,9 @@
 ## Solution Structure
 - `CraterClaw.Core` — core library (C#, .NET 10)
 - `CraterClaw.Console` — console harness (C#, .NET 10)
-- `CraterClaw.Core.Tests` — xUnit test project (.NET 10)
+- `CraterClaw.Api` — ASP.NET Core minimal API (C#, .NET 10)
+- `CraterClaw.Core.Tests` — xUnit unit tests (.NET 10)
+- `CraterClaw.Api.Tests` — xUnit integration tests using `WebApplicationFactory` (.NET 10)
 
 ## Configuration
 - `craterclaw.json` in the console output directory — provider endpoints, MCP server definitions, qBitTorrent connection details.
@@ -45,6 +47,22 @@
 - Serilog with a rolling daily file sink in `logs/` relative to the console output directory.
 - Minimum level: Debug.
 - Registered via `AddLogging(b => b.AddSerilog(...))`.
+
+## CraterClaw.Api
+
+ASP.NET Core minimal API. Loads `craterclaw.json` (optional, falls back to in-memory/environment config) and user secrets. Registers `AddCraterClawCore`. CORS is permissive (all origins, headers, methods) for development.
+
+### Endpoints
+- `GET /api/providers` — returns all configured endpoint names and base URLs from `ProviderOptions`.
+- `GET /api/providers/{name}/status` — calls `IProviderStatusService.CheckStatusAsync`, returns `{ isReachable, errorMessage }`. 404 if name not found.
+- `GET /api/providers/{name}/models` — calls `IModelListingService.ListModelsAsync`, returns `[{ name, sizeBytes, modifiedAt }]`. 404 if name not found.
+- `POST /api/providers/{name}/execute` — accepts `{ modelName, messages: [{role, content}], temperature?, maxTokens? }`, calls `IModelExecutionService.ExecuteAsync`, returns `{ content, modelName, finishReason }`. 404 if name not found.
+- `GET /api/profiles` — returns all behavior profiles from `IBehaviorProfileService`.
+- `GET /api/mcp` — returns configured MCP server names, labels, and enabled flags from `McpOptions`.
+- `POST /api/mcp/{name}/availability` — calls `IMcpAvailabilityService.CheckAvailabilityAsync`, returns `{ name, isAvailable, errorMessage }`. 404 if name not found.
+- `POST /api/providers/{name}/agentic` — accepts `{ modelName, prompt, profileId, maxIterations? }`, resolves profile via `IBehaviorProfileService`, builds plugin list (same logic as console), calls `IAgenticExecutionService.ExecuteAsync` with `StreamChunk: null`, returns `{ content, finishReason, toolsInvoked }`. 404 if endpoint not found, 400 if profile not found.
+
+Enums are serialized as strings (`JsonStringEnumConverter` applied globally).
 
 ## Console Harness Flow
 1. Load `craterclaw.json` and user secrets.

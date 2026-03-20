@@ -36,7 +36,9 @@ dotnet --version
 - `CraterClaw.slnx`: solution file
 - `CraterClaw.Core`: library contracts, options types, and service implementations
 - `CraterClaw.Console`: console harness for manually exercising library workflows
-- `CraterClaw.Core.Tests`: xUnit unit tests (no live Ollama required)
+- `CraterClaw.Api`: ASP.NET Core minimal API exposing library workflows over HTTP
+- `CraterClaw.Core.Tests`: xUnit unit tests for the core library (no live Ollama required)
+- `CraterClaw.Api.Tests`: xUnit integration tests for the web API
 
 ## Restore and Build
 
@@ -55,9 +57,19 @@ dotnet test .\CraterClaw.slnx
 
 The test suite uses mocked HTTP and does not require a real Ollama instance or MCP server.
 
+## Run the Web API
+
+```powershell
+dotnet run --project .\CraterClaw.Api
+```
+
+The API listens on the default ASP.NET Core ports (http://localhost:5000 by default). Endpoints are available under `/api`.
+
+The API reads its own `CraterClaw.Api/craterclaw.json`. Configure provider endpoints there in the same format as the console harness. User secrets for the API use the project flag `--project .\CraterClaw.Api`.
+
 ## Configuration
 
-All configuration lives in `CraterClaw.Console/craterclaw.json`. The file is committed with placeholder values for any secrets. Real values are supplied at runtime via dotnet user secrets (development) or OS environment variables (deployment).
+A single `craterclaw.json` lives at the repository root and is shared by both `CraterClaw.Console` and `CraterClaw.Api`. It is copied to each project's output directory at build time. The file is committed with placeholder values for any secrets. Real values are supplied at runtime via dotnet user secrets (development) or OS environment variables (deployment).
 
 ### Provider endpoints
 
