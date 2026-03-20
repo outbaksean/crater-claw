@@ -32,7 +32,7 @@ describe('AgenticPanel', () => {
         mockPostAgentic.mockResolvedValue(response)
 
         const wrapper = mountPanel()
-        await wrapper.find('input').setValue('List my torrents')
+        await wrapper.find('textarea').setValue('List my torrents')
         await wrapper.find('form').trigger('submit')
         await flushPromises()
 
@@ -46,7 +46,7 @@ describe('AgenticPanel', () => {
         expect(wrapper.text()).toContain('Completed')
     })
 
-    it('displays no-tools message when toolsInvoked is empty', async () => {
+    it('omits tools section when toolsInvoked is empty', async () => {
         const response: AgenticResponse = {
             content: '2 + 2 = 4',
             finishReason: 'Completed',
@@ -55,23 +55,24 @@ describe('AgenticPanel', () => {
         mockPostAgentic.mockResolvedValue(response)
 
         const wrapper = mountPanel()
-        await wrapper.find('input').setValue('What is 2 + 2?')
+        await wrapper.find('textarea').setValue('What is 2 + 2?')
         await wrapper.find('form').trigger('submit')
         await flushPromises()
 
-        expect(wrapper.text()).toContain('No tools invoked.')
+        expect(wrapper.find('.tools-line').exists()).toBe(false)
+        expect(wrapper.text()).toContain('2 + 2 = 4')
     })
 
-    it('disables input and button while loading', async () => {
+    it('disables textarea and button while loading', async () => {
         let resolve: (v: AgenticResponse) => void
         mockPostAgentic.mockReturnValue(new Promise((r) => (resolve = r)))
 
         const wrapper = mountPanel()
-        await wrapper.find('input').setValue('test')
+        await wrapper.find('textarea').setValue('test')
         await wrapper.find('form').trigger('submit')
         await flushPromises()
 
-        expect(wrapper.find('input').attributes('disabled')).toBeDefined()
+        expect(wrapper.find('textarea').attributes('disabled')).toBeDefined()
         expect(wrapper.find('button').attributes('disabled')).toBeDefined()
 
         resolve!({ content: 'done', finishReason: 'Completed', toolsInvoked: [] })
@@ -81,7 +82,7 @@ describe('AgenticPanel', () => {
         mockPostAgentic.mockRejectedValue(new Error('model error'))
 
         const wrapper = mountPanel()
-        await wrapper.find('input').setValue('test')
+        await wrapper.find('textarea').setValue('test')
         await wrapper.find('form').trigger('submit')
         await flushPromises()
 

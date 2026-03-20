@@ -13,6 +13,7 @@ const prompt = ref('')
 const loading = ref(false)
 const error = ref<string | null>(null)
 const result = ref<AgenticResponse | null>(null)
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 async function submit() {
     const content = prompt.value.trim()
@@ -32,38 +33,56 @@ async function submit() {
         loading.value = false
     }
 }
+
+function onKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault()
+        submit()
+    }
+}
+
+function onInput() {
+    const el = textareaRef.value
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 72) + 'px'
+}
 </script>
 
 <template>
     <div class="agentic">
         <form @submit.prevent="submit">
-            <div class="input-row">
-                <input
+            <div class="input-bar">
+                <textarea
+                    ref="textareaRef"
                     v-model="prompt"
-                    type="text"
-                    placeholder="Enter a task prompt..."
+                    rows="1"
+                    placeholder="task prompt..."
                     :disabled="loading"
                     aria-label="Task prompt"
+                    @keydown="onKeydown"
+                    @input="onInput"
                 />
                 <button type="submit" :disabled="loading || !prompt.trim()">
-                    {{ loading ? 'Running...' : 'Run' }}
+                    {{ loading ? 'running...' : 'run' }}
                 </button>
             </div>
         </form>
         <p v-if="error" class="error">{{ error }}</p>
         <div v-if="result" class="result">
-            <p class="finish-reason">Finish reason: {{ result.finishReason }}</p>
-            <div v-if="result.toolsInvoked.length > 0" class="tools">
-                <p class="tools-label">Tools invoked:</p>
-                <ul>
-                    <li v-for="tool in result.toolsInvoked" :key="tool">{{ tool }}</li>
-                </ul>
-            </div>
-            <p v-else class="no-tools">No tools invoked.</p>
-            <div class="response">
-                <p class="response-label">Response:</p>
-                <p class="response-content">{{ result.content }}</p>
-            </div>
+            <p v-if="loading" class="running-indicator">running...</p>
+            <p class="finish-reason">{{ result.finishReason }}</p>
+            <p v-if="result.toolsInvoked.length > 0" class="tools-line">
+                <span
+                    v-for="tool in result.toolsInvoked"
+                    :key="tool"
+                    class="tool-name"
+                >{{ tool }}</span>
+            </p>
+            <div class="response">{{ result.content }}</div>
+        </div>
+        <div v-else-if="loading" class="result">
+            <p class="running-indicator">running...</p>
         </div>
     </div>
 </template>
@@ -72,60 +91,117 @@ async function submit() {
 .agentic {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 12px;
 }
 
-.input-row {
+.input-bar {
     display: flex;
-    gap: 0.5rem;
+    gap: 8px;
 }
 
-.input-row input {
+textarea {
     flex: 1;
-    padding: 0.4rem 0.6rem;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    padding: 8px 12px;
+    resize: none;
+    line-height: 1.5;
+    transition: border-color var(--transition);
 }
 
-.input-row button {
-    padding: 0.4rem 1rem;
+textarea::placeholder {
+    color: var(--text-placeholder);
+}
+
+textarea:focus {
+    outline: none;
+    border-color: var(--border-active);
+}
+
+textarea:disabled {
+    opacity: 0.5;
+}
+
+button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 8px 16px;
+    font-family: var(--font-ui);
+    font-size: 12px;
+    letter-spacing: 0.04em;
     cursor: pointer;
+    transition: background var(--transition), transform var(--transition);
+    align-self: flex-end;
+    white-space: nowrap;
 }
 
-.input-row button:disabled {
-    cursor: default;
-    opacity: 0.6;
+button:hover:not(:disabled) {
+    background: var(--accent-hover);
+}
+
+button:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 .error {
-    color: red;
-    margin: 0;
+    color: var(--err);
+    font-size: 12px;
 }
 
 .result {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 8px;
 }
 
-.finish-reason,
-.tools-label,
-.response-label,
-.no-tools {
-    margin: 0;
-    font-weight: bold;
+.running-indicator {
+    color: var(--text-dim);
+    animation: blink 1.4s ease-in-out infinite;
 }
 
-.no-tools {
-    font-weight: normal;
-    color: #666;
+@keyframes blink {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
 }
 
-ul {
-    margin: 0.25rem 0 0;
-    padding-left: 1.5rem;
+.finish-reason {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
 }
 
-.response-content {
-    margin: 0.25rem 0 0;
+.tools-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tool-name {
+    font-size: 11px;
+    color: var(--accent);
+}
+
+.response {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
     white-space: pre-wrap;
+    font-size: 13px;
+    line-height: 1.7;
+    max-height: 480px;
+    overflow-y: auto;
 }
 </style>

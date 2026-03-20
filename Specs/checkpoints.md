@@ -67,6 +67,11 @@ Depends on: qbittorrent-plugin (checkpoint 10)
 
 Configure VS Code launch configurations and pre-launch build tasks to support C# debugging for `CraterClaw.Console` and `CraterClaw.Api`.
 
+### 15. front-end-ux
+
+Redesign the Vue frontend with a unified monospace dark workspace aesthetic: DM Mono + Syne fonts, CSS design token system, panel layout with progressive disclosure, left-border selection pattern, inline status pills, textarea inputs with Enter-to-submit, animated loading states, and panel reveal transitions.
+Depends on: vue-frontend (checkpoint 12)
+
 ## Planned
 
 ### behavior-refactor
@@ -80,10 +85,6 @@ Create and document usefull powershell aliases for running, testing, linting etc
 ### ide-formatting
 
 Verify automatic formatting commands do the same as vscode on save formatting
-
-### front-end-ux
-
-Make the vue frontend ux nicer
 
 ### media-management-tool
 
