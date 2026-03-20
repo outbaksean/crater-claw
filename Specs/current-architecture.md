@@ -42,6 +42,7 @@
   - `ResumeTorrent` — resumes a torrent by hash.
   - `DeleteTorrent` — deletes a torrent by hash with optional file deletion.
   - `GetTransferStats` — current download/upload speeds and session totals.
+  - `SearchTorrents` — starts a search job using installed qBitTorrent search plugins, polls until complete, returns a JSON array of results (fileName, fileUrl, fileSize, nbSeeders, nbLeechers, siteUrl). `maxResults` defaults to 10. File names are truncated to 120 characters and magnet link tracker parameters are stripped to reduce response size.
 
 ### Logging
 - Serilog with a rolling daily file sink in `logs/` relative to the console output directory.

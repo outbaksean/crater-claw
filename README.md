@@ -114,6 +114,16 @@ dotnet user-secrets set "providers:active" "lan" --project .\CraterClaw.Console
 
 ### qBitTorrent plugin
 
+The `qbittorrent-manager` behavior profile enables the following kernel functions:
+
+- `ListTorrents` - list all torrents with name, hash, status, progress, and size
+- `AddTorrentByUrl` - add a torrent from a magnet link or HTTP URL
+- `PauseTorrent` - pause a torrent by hash
+- `ResumeTorrent` - resume a paused torrent by hash
+- `DeleteTorrent` - delete a torrent by hash with optional file deletion
+- `GetTransferStats` - current download/upload speeds and session totals
+- `SearchTorrents` - search for torrents using installed qBitTorrent search plugins; requires at least one search plugin enabled in qBitTorrent (Plugins > Search Plugins)
+
 qBitTorrent credentials live under `qbittorrent` in `craterclaw.json`. Leave the file values empty and supply real values via user secrets:
 
 ```powershell
@@ -148,6 +158,14 @@ dotnet run --project .\CraterClaw.Console
 
 1. Open `Terminal` -> `Run Task...`
 2. Choose `Run CraterClaw Console (with args)`
+
+### VS Code Debugger
+
+1. Open the Run and Debug panel (`Ctrl+Shift+D`)
+2. Select `Debug CraterClaw.Console` from the dropdown
+3. Press `F5`
+
+The console runs in the integrated terminal so interactive prompts work normally while breakpoints are active. To debug the API instead, select `Debug CraterClaw.Api`.
 
 ## Console Flow
 
