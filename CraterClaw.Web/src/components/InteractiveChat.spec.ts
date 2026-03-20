@@ -32,7 +32,7 @@ describe('InteractiveChat', () => {
         })
 
         const wrapper = mountChat()
-        await wrapper.find('input').setValue('Hi')
+        await wrapper.find('textarea').setValue('Hi')
         await wrapper.find('form').trigger('submit')
         await flushPromises()
 
@@ -41,16 +41,16 @@ describe('InteractiveChat', () => {
         expect(messages[1].text()).toContain('Hello!')
     })
 
-    it('disables input and button while loading', async () => {
+    it('disables textarea and button while loading', async () => {
         let resolve: (v: unknown) => void
         mockPostExecute.mockReturnValue(new Promise((r) => (resolve = r)))
 
         const wrapper = mountChat()
-        await wrapper.find('input').setValue('Hi')
+        await wrapper.find('textarea').setValue('Hi')
         await wrapper.find('form').trigger('submit')
         await nextTick()
 
-        expect(wrapper.find('input').attributes('disabled')).toBeDefined()
+        expect(wrapper.find('textarea').attributes('disabled')).toBeDefined()
         expect(wrapper.find('button').attributes('disabled')).toBeDefined()
 
         resolve!({
@@ -60,7 +60,7 @@ describe('InteractiveChat', () => {
         })
     })
 
-    it('clears the input after submitting', async () => {
+    it('clears the textarea after submitting', async () => {
         mockPostExecute.mockResolvedValue({
             content: 'Hi back',
             modelName: 'qwen3:8b',
@@ -68,17 +68,17 @@ describe('InteractiveChat', () => {
         })
 
         const wrapper = mountChat()
-        await wrapper.find('input').setValue('Hello')
+        await wrapper.find('textarea').setValue('Hello')
         await wrapper.find('form').trigger('submit')
         await flushPromises()
-        expect(wrapper.find('input').element.value).toBe('')
+        expect(wrapper.find('textarea').element.value).toBe('')
     })
 
     it('displays error message on failure', async () => {
         mockPostExecute.mockRejectedValue(new Error('timeout'))
 
         const wrapper = mountChat()
-        await wrapper.find('input').setValue('Hi')
+        await wrapper.find('textarea').setValue('Hi')
         await wrapper.find('form').trigger('submit')
         await flushPromises()
 

@@ -12,35 +12,61 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <ol>
+    <ul class="profile-list">
         <li
-            v-for="profile in profiles"
+            v-for="(profile, i) in profiles"
             :key="profile.id"
-            :class="{ selected: selectedProfile?.id === profile.id }"
+            :class="['item', { 'item--selected': selectedProfile?.id === profile.id }]"
             @click="emit('select', profile)"
         >
-            <span class="name">{{ profile.name }}</span>
-            <span class="description"> - {{ profile.description }}</span>
+            <span class="item-index">{{ i + 1 }}</span>
+            <span class="item-name">{{ profile.name }}</span>
+            <span class="item-desc"> &mdash; {{ profile.description }}</span>
         </li>
-    </ol>
+    </ul>
 </template>
 
 <style scoped>
-ol {
-    padding-left: 1.5rem;
+.profile-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
-li {
+.item {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: var(--radius);
     cursor: pointer;
-    padding: 0.25rem 0;
+    border-left: 3px solid transparent;
+    transition: background var(--transition), border-color var(--transition);
 }
 
-li.selected {
-    font-weight: bold;
+.item:hover {
+    background: var(--surface-raised);
 }
 
-.description {
-    color: #555;
-    font-size: 0.9em;
+.item--selected {
+    border-left-color: var(--accent);
+    background: var(--surface-raised);
+}
+
+.item-index {
+    color: var(--text-dim);
+    min-width: 16px;
+    flex-shrink: 0;
+    font-size: 11px;
+}
+
+.item-name {
+    color: var(--text);
+}
+
+.item-desc {
+    color: var(--text-dim);
+    font-size: 11px;
 }
 </style>
