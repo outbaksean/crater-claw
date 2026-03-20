@@ -2,8 +2,11 @@
 import { onMounted, watch } from 'vue'
 import { useProviders } from './composables/useProviders'
 import { useModels } from './composables/useModels'
+import { useProfiles } from './composables/useProfiles'
 import InteractiveChat from './components/InteractiveChat.vue'
-import type { ProviderEndpoint, ModelItem } from './api/types'
+import ProfileSelector from './components/ProfileSelector.vue'
+import AgenticPanel from './components/AgenticPanel.vue'
+import type { ProviderEndpoint, ModelItem, BehaviorProfile } from './api/types'
 
 const {
     providers,
@@ -42,6 +45,21 @@ function onSelectProvider(provider: ProviderEndpoint) {
 
 function onSelectModel(model: ModelItem) {
     selectModel(model)
+}
+
+const {
+    profiles,
+    selectedProfile,
+    loading: loadingProfiles,
+    error: profileError,
+    fetchProfiles,
+    selectProfile,
+} = useProfiles()
+
+onMounted(fetchProfiles)
+
+function onSelectProfile(profile: BehaviorProfile) {
+    selectProfile(profile)
 }
 </script>
 
@@ -102,6 +120,30 @@ function onSelectModel(model: ModelItem) {
                 :model-name="selectedModel.name"
             />
         </section>
+
+        <section>
+            <h2>Behavior Profiles</h2>
+            <p v-if="loadingProfiles">Loading...</p>
+            <p v-else-if="profileError" class="error">{{ profileError }}</p>
+            <ProfileSelector
+                v-else
+                :profiles="profiles"
+                :selected-profile="selectedProfile"
+                @select="onSelectProfile"
+            />
+        </section>
+
+        <section v-if="selectedProfile && selectedModel && selectedProvider">
+            <h2>Agentic Task</h2>
+            <p class="profile-label">
+                Profile: <strong>{{ selectedProfile.name }}</strong>
+            </p>
+            <AgenticPanel
+                :provider-name="selectedProvider.name"
+                :model-name="selectedModel.name"
+                :profile-id="selectedProfile.id"
+            />
+        </section>
     </div>
 </template>
 
@@ -145,5 +187,9 @@ li.selected {
 
 .error {
     color: red;
+}
+
+.profile-label {
+    margin: 0 0 0.5rem;
 }
 </style>

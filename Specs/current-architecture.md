@@ -81,11 +81,12 @@ Vue 3 TypeScript frontend (Vite, Vitest). Consumes `CraterClaw.Api` over HTTP. A
 - `useModels` composable: fetches models for selected provider, tracks selected model.
 - `useExecution` composable: manages conversation message history, calls `postExecute`, appends user and assistant turns.
 - `InteractiveChat` component: input form, conversation history display, loading/error state.
-- `App.vue`: provider list, status indicator, model list, chat panel (shown when model is selected).
+- `useProfiles` composable: fetches profile list, tracks selected profile.
+- `ProfileSelector` component: numbered list of profiles with name and description.
+- `AgenticPanel` component: task prompt input, displays response content, finish reason, and tools invoked list.
+- `App.vue`: provider list, status indicator, model list, chat panel, profile selector, agentic panel (shown when provider + model + profile are all selected).
 
-### Planned (later phases)
-- Behavior profile selection and agentic execution panel
-- MCP server list and availability check panel
+MCP server UI is not implemented in the frontend. The API endpoints exist but are not surfaced in the Vue app.
 
 ## Console Harness Flow
 1. Load `craterclaw.json` and user secrets.

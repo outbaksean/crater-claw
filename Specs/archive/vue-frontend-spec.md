@@ -8,10 +8,11 @@
 
 ## Scope
 - Add `CraterClaw.Web` as a Vue 3 + TypeScript project (Vite scaffold) in the solution root.
-- Consume all existing `/api` endpoints.
+- Consume provider, model, execution, profile, and agentic endpoints.
 - Mirror the console harness flow as a set of views/components.
 - Unit test components and composables with Vitest.
 - No authentication, no user accounts. Development CORS is already permissive on the API side.
+- MCP server UI is out of scope; MCP support may be revisited when a plugin-based approach is adopted.
 
 ## Views and User Flows
 
@@ -37,11 +38,6 @@
 - After provider, model, and profile are selected, provide a prompt input.
 - Submit via `POST /api/providers/{name}/agentic`.
 - Display the response content, finish reason, and tools invoked.
-
-### MCP Servers
-- List configured servers from `GET /api/mcp`.
-- Allow the user to check availability of one via `POST /api/mcp/{name}/availability`.
-- Display the result.
 
 ## Tech Stack
 - Vue 3 with Composition API and `<script setup>`
@@ -144,7 +140,7 @@ API base URL is read from `import.meta.env.VITE_API_BASE_URL` (defaults to `http
 ---
 
 ## Phase 3: Behavior profiles and agentic execution
-**Status: Planned**
+**Status: Done**
 
 ### Scope
 - Add `getProfiles(): Promise<BehaviorProfile[]>` and `postAgentic(providerName: string, request: AgenticRequest): Promise<AgenticResponse>` to `client.ts`.
@@ -164,24 +160,3 @@ API base URL is read from `import.meta.env.VITE_API_BASE_URL` (defaults to `http
 - Select a profile and submit a prompt.
 - Confirm response content and tools invoked list are displayed.
 
----
-
-## Phase 4: MCP server list and availability check
-**Status: Planned**
-
-### Scope
-- Add `getMcpServers(): Promise<McpServer[]>` and `postMcpAvailability(name: string): Promise<McpAvailability>` to `client.ts`.
-- Create a `useMcp` composable managing server list and availability check state.
-- Implement an `McpPanel` component:
-  - Lists configured MCP servers (name, label, enabled flag).
-  - Button per server to check availability.
-  - Displays result inline (available / unavailable / error message).
-- Wire into `App.vue` (can be a collapsible or separate section).
-- Tests:
-  - `useMcp`: fetches servers, triggers availability check, stores result.
-  - `McpPanel`: renders server list, calls availability on button click, displays result.
-
-### Manual Verification
-- Prerequisites: `CraterClaw.Api` running, at least one MCP server configured in `craterclaw.json`.
-- Confirm server list loads.
-- Click availability check and confirm result is displayed.
