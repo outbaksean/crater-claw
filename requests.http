@@ -1,0 +1,71 @@
+@baseUrl = http://localhost:5000
+@providerName = wslWithLocalhostIp
+@modelName = qwen3:8b
+@mcpServerName = replace-with-configured-server-name
+
+### List configured endpoints
+GET {{baseUrl}}/api/providers
+
+### Check provider status
+GET {{baseUrl}}/api/providers/{{providerName}}/status
+
+### List downloaded models
+GET {{baseUrl}}/api/providers/{{providerName}}/models
+
+### Interactive execution
+POST {{baseUrl}}/api/providers/{{providerName}}/execute
+Content-Type: application/json
+
+{
+    "modelName": "{{modelName}}",
+    "messages": [
+        { "role": "User", "content": "Say hello in one sentence." }
+    ]
+}
+
+### Interactive execution - multi-turn
+POST {{baseUrl}}/api/providers/{{providerName}}/execute
+Content-Type: application/json
+
+{
+    "modelName": "{{modelName}}",
+    "messages": [
+        { "role": "User", "content": "What is the capital of France?" },
+        { "role": "Assistant", "content": "The capital of France is Paris." },
+        { "role": "User", "content": "What is its population?" }
+    ]
+}
+
+### 404 - unknown endpoint
+GET {{baseUrl}}/api/providers/unknown/status
+
+### List behavior profiles
+GET {{baseUrl}}/api/profiles
+
+### List configured MCP servers
+GET {{baseUrl}}/api/mcp
+
+### Check MCP server availability
+POST {{baseUrl}}/api/mcp/{{mcpServerName}}/availability
+
+### Agentic execution - no tools
+POST {{baseUrl}}/api/providers/{{providerName}}/agentic
+Content-Type: application/json
+
+{
+    "modelName": "{{modelName}}",
+    "prompt": "What is 2 + 2?",
+    "profileId": "no-tools",
+    "maxIterations": 5
+}
+
+### Agentic execution - qBitTorrent manager
+POST {{baseUrl}}/api/providers/{{providerName}}/agentic
+Content-Type: application/json
+
+{
+    "modelName": "{{modelName}}",
+    "prompt": "Can you give me the first 2 torrents",
+    "profileId": "qbittorrent-manager",
+    "maxIterations": 10
+}

@@ -1,4 +1,6 @@
 <Solution>
+  <Project Path="CraterClaw.Api/CraterClaw.Api.csproj" />
+  <Project Path="CraterClaw.Api.Tests/CraterClaw.Api.Tests.csproj" />
   <Project Path="CraterClaw.Console/CraterClaw.Console.csproj" />
   <Project Path="CraterClaw.Core.Tests/CraterClaw.Core.Tests.csproj" />
   <Project Path="CraterClaw.Core/CraterClaw.Core.csproj" />
