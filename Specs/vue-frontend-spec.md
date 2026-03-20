@@ -120,7 +120,7 @@ API base URL is read from `import.meta.env.VITE_API_BASE_URL` (defaults to `http
 ---
 
 ## Phase 2: Interactive execution
-**Status: Planned**
+**Status: Done**
 
 ### Scope
 - Add `postExecute(providerName: string, request: ExecutionRequest): Promise<ExecutionResponse>` to `client.ts`.

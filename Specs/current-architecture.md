@@ -79,10 +79,11 @@ Vue 3 TypeScript frontend (Vite, Vitest). Consumes `CraterClaw.Api` over HTTP. A
 - `getProviders`, `getProviderStatus`, `getModels` in `client.ts`.
 - `useProviders` composable: fetches provider list, tracks selected provider, fetches and exposes status.
 - `useModels` composable: fetches models for selected provider, tracks selected model.
-- `App.vue`: numbered provider list, status indicator, model list (shown when provider is reachable), selected model display.
+- `useExecution` composable: manages conversation message history, calls `postExecute`, appends user and assistant turns.
+- `InteractiveChat` component: input form, conversation history display, loading/error state.
+- `App.vue`: provider list, status indicator, model list, chat panel (shown when model is selected).
 
 ### Planned (later phases)
-- Interactive execution (chat component)
 - Behavior profile selection and agentic execution panel
 - MCP server list and availability check panel
 

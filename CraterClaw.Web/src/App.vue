@@ -2,6 +2,7 @@
 import { onMounted, watch } from 'vue'
 import { useProviders } from './composables/useProviders'
 import { useModels } from './composables/useModels'
+import InteractiveChat from './components/InteractiveChat.vue'
 import type { ProviderEndpoint, ModelItem } from './api/types'
 
 const {
@@ -92,6 +93,14 @@ function onSelectModel(model: ModelItem) {
             <p v-if="selectedModel">
                 Selected: <strong>{{ selectedModel.name }}</strong>
             </p>
+        </section>
+
+        <section v-if="selectedModel && selectedProvider">
+            <h2>Chat</h2>
+            <InteractiveChat
+                :provider-name="selectedProvider.name"
+                :model-name="selectedModel.name"
+            />
         </section>
     </div>
 </template>
