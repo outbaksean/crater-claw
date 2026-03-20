@@ -26,11 +26,24 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<McpOptions>, McpOptionsValidator>();
 
+        services.AddOptions<QBitTorrentOptions>()
+            .Bind(configuration.GetSection("qbittorrent"))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<QBitTorrentOptions>, QBitTorrentOptionsValidator>();
+
         services.AddTransient<IProviderStatusService, OllamaProviderStatusService>();
         services.AddTransient<IModelListingService, OllamaModelListingService>();
         services.AddTransient<IModelExecutionService, OllamaModelExecutionService>();
         services.AddTransient<IMcpAvailabilityService, McpAvailabilityService>();
         services.AddSingleton<IBehaviorProfileService, BehaviorProfileService>();
+        services.AddTransient<IMcpClientProvider, McpClientProvider>();
+        services.AddSingleton<IKernelFactory, DefaultKernelFactory>();
+        services.AddTransient<IAgenticExecutionService, SemanticKernelAgenticExecutionService>();
+        services.AddHttpClient("qbittorrent");
+        services.AddSingleton(sp => new QBitTorrentPlugin(
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient("qbittorrent"),
+            sp.GetRequiredService<IOptions<QBitTorrentOptions>>(),
+            sp.GetRequiredService<ILogger<QBitTorrentPlugin>>()));
 
         return services;
     }

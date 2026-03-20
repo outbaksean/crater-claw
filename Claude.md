@@ -2,79 +2,67 @@
 
 ## Spec-Based Development
 
-### Structure & Hierarchy
+### Directory Structure
 
-- The Specs/ directory contains all Markdown specification and plan files.
-- Hierarchy: Specs are organized by directory level (high-level to low-level).
-- Mandatory Files: Each directory level must contain a {name}-spec.md.
-- Convention: For a spec named {name}-spec.md, any children must live in a subdirectory named {name}/.
-- Content Requirements: Every spec must include: Name, Purpose, Scope, and Status.
-- Supporting Docs: Levels may include optional files like {name}-decisions.md (architectural choices) or {name}-prereqs.md (environment/dependency needs).
-- Relationship: A child spec must represent a subset of the parent's scope but with significantly higher technical detail.
+```text
+Specs/
+  target-architecture.md      -- end-goal architecture, high-level, rarely changes
+  checkpoints.md              -- ordered list of working stages with dependencies
+  current-architecture.md     -- living doc of what is actually built; updated each phase
+  {checkpoint-name}-spec.md   -- the one active spec; named after its checkpoint
+  archive/                    -- completed specs moved here when their checkpoint is done
+```
 
-### Depth-First Development
+### Documents
 
-- The spec tree is built top-down but implemented depth-first.
-- A high-level spec may remain as a placeholder (Status: Planning, no plan, no child specs) indefinitely while implementation proceeds on a separate, fully-defined branch of the tree.
-- Do not treat the absence of sibling plans or sibling child specs as a blocker. Only the active spec and its ancestors need to be sufficiently defined to begin implementation.
-- When selecting what to work on next, choose the deepest spec that has a plan and is Not Started or In Progress.
+- **target-architecture.md**: Describes the intended end state of the system at a high level. Updated only when the overall direction changes.
+- **checkpoints.md**: An ordered list of working stages. Each checkpoint describes a verifiable, runnable state of the application. Dependencies between checkpoints are noted. The user maintains this list but may ask Claude to generate or update it.
+- **current-architecture.md**: A technical description of what is currently built. Updated after every phase to reflect the real state of the code. Must be accurate enough that a new developer can understand the system without reading specs or source code.
+- **{checkpoint-name}-spec.md**: The single in-progress spec. Named after the checkpoint it delivers. Contains all phases needed to reach that checkpoint. Moved to `archive/` when the checkpoint is complete.
 
 ### The Phased Planning Model
 
-- Plan Scope: A spec that is ready for implementation has exactly one {name}-plan.md or a subdirectory of child specs — not both.
-- Placeholder Specs: A spec with neither a plan nor child specs is a valid placeholder. It signals that scope has been acknowledged but not yet refined. Do not add a plan or child specs to a placeholder until it becomes the active implementation target.
-- Atomic Phases: A plan.md is broken into Phases.
-- The Session Rule: A single Phase must have a small enough scope to be fully implemented, tested, and verified in one AI session.
-- Scalability: If a plan is too complex for a single file, it can refer to separate phase files (e.g., {name}-plan-p1.md).
+- A spec is broken into Phases.
+- A single Phase must be scoped to fit in one session (a few hours at most): fully implemented, tested, and verified before moving on.
+- Phases are defined in the spec file itself; no separate plan files.
+- A spec may span multiple sessions but only one phase is active at a time.
 
-Example Structure:
-```text
--- Option A: spec implemented directly via a plan
-Specs/
-  ai-supervisor-spec.md
-  ai-supervisor/
-    library-spec.md
-    library-plan.md         <-- Phases 1, 2, and 3 live here; no library/ subdirectory
+### Phase Implementation Checklist
 
--- Option B: spec too broad for a single plan, decomposed into child specs instead
-Specs/
-  ai-supervisor-spec.md
-  ai-supervisor/
-    library-spec.md         <-- No library-plan.md at this level
-    library/
-      provider-spec.md
-      provider-plan.md
-      scheduler-spec.md     <-- Placeholder, no plan yet
-```
-
-- Implementing a Phase (The Execution Loop)
-- Before starting an AI session, verify the current Phase has enough detail to be "Contract-First" compliant. Use this checklist for every session:
-#### Phase Implementation Checklist
+Before starting a phase, verify it has enough detail to proceed. Each phase must follow this loop:
 
 - Define Contract: Generate or update interfaces, types, or API signatures.
-- Write Tests: Generate automated tests based on the Contract and Spec (before implementation).
+- Write Tests: Generate automated tests based on the contract and spec (before implementation).
 - Implement: Generate the code to satisfy the tests.
-- README Sync: After every phase, update the README to reflect the current state. The README must always be accurate and complete enough for a new developer to configure and run the application without reading the specs. Update: the Current State section to describe all working features; the Prerequisites section if new dependencies were added; the Configuration section if config files, keys, or secret paths changed; the Console Flow section if the interactive experience changed. Do not leave outdated instructions in place.
-- Manual Verify: The user reviews and does the "Manual Verification Plan" defined in the plan.
-- Sync Spec: If implementation forced a logic change, update the .md spec/plan and any relevant higher level specs.
-- Close Session: Mark Phase status as Done.
+- README Sync: Update the README to reflect the current state. The README must always be accurate and complete enough for a new developer to configure and run the application. Update: the Current State section to describe all working features; the Prerequisites section if new dependencies were added; the Configuration section if config files, keys, or secret paths changed; the Console Flow section if the interactive experience changed. Do not leave outdated instructions in place.
+- Current Architecture Sync: Update current-architecture.md to reflect what was just built.
+- Manual Verify: The user reviews and performs the Manual Verification Plan defined in the phase.
+- Close Phase: Mark the phase status as Done in the spec.
 
-#### Implementation Rules
+When all phases in a spec are Done, move the spec file to `archive/`.
+
+### Implementation Rules
 
 - Contract-First: Never write implementation logic until the interface/types and tests exist.
-- Integration Glue: A parent spec must define the I/O schemas relevant to the child spec currently being implemented. It does not need to define contracts for scope that has not yet been refined into an active child spec.
 - Red-Green-Sync: Implementation is only complete when tests pass and the documentation matches the final code.
-- Completion: A Spec is marked Done only when all associated Phases or Child Specs are Done.
-
+- External API Verification: Verify exact API method signatures, property names, and available overloads against the installed package version before writing a phase. A phase may not begin implementation with unverified external API assumptions.
 
 ## Testing
+
 - XUnit for C# Unit Tests
 - Vitest for Vue Unit Tests
 - Tests should not attempt to interact with a real ollama instance
 
+## Git Flow
+
+- The `main` branch is protected. All changes merge via pull request.
+- Each spec gets one feature branch, named after the checkpoint (e.g., `feature/provider-selection`).
+- The PR is opened when the spec is complete (all phases done) and ready for review.
+- The user manages all git and GitHub commands manually. Do not run any git or GitHub commands unless explicitly instructed.
+
 ## Other Notes
+
 - Python is not available for scripting
 - Node is avaialble for scripting
 - Never use an icon or emoji in documentation or source code
-- Do not attempt any git or github commands unless explicitly instructed
 - When making a manual verification plan, note any dependencies

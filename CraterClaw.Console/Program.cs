@@ -35,6 +35,8 @@ var modelListingService = provider.GetRequiredService<IModelListingService>();
 var executionService = provider.GetRequiredService<IModelExecutionService>();
 var mcpAvailabilityService = provider.GetRequiredService<IMcpAvailabilityService>();
 var behaviorProfileService = provider.GetRequiredService<IBehaviorProfileService>();
+var qBitTorrentPlugin = provider.GetRequiredService<QBitTorrentPlugin>();
+var agenticExecutionService = provider.GetRequiredService<IAgenticExecutionService>();
 
 try
 {
@@ -91,6 +93,8 @@ try
 
     var status = await statusService.CheckStatusAsync(endpoint, CancellationToken.None);
 
+    string? selectedModelName = null;
+
     if (status.IsReachable)
     {
         Console.WriteLine($"Reachable: {endpoint.BaseUrl}");
@@ -117,7 +121,6 @@ try
             Console.WriteLine($"Model listing failed: {ex.Message}");
         }
 
-        string? selectedModelName = null;
         if (models.Count > 0)
         {
             Console.Write("Select model number (leave blank to skip): ");
@@ -247,11 +250,57 @@ try
 
             var permitted = selectedProfile.AllowedMcpServerNames;
             if (permitted.Count == 0)
-                Console.WriteLine("Permitted MCP servers: (none)");
+            {
+                Console.WriteLine("No plugin functions available for this profile.");
+            }
             else
-                Console.WriteLine($"Permitted MCP servers: {string.Join(", ", permitted)}");
+            {
+                var functions = QBitTorrentPlugin.GetFunctionDescriptions();
+                Console.WriteLine($"Available plugin functions ({functions.Count}):");
+                for (var i = 0; i < functions.Count; i++)
+                {
+                    Console.WriteLine($"{i + 1}. {functions[i].Name} - {functions[i].Description}");
+                }
+            }
 
-            _ = selectedProfileId;
+            if (!string.IsNullOrWhiteSpace(selectedModelName))
+            {
+                Console.Write("Enter task prompt (leave blank to skip): ");
+                var taskPrompt = Console.ReadLine();
+
+                if (!string.IsNullOrWhiteSpace(taskPrompt))
+                {
+                    try
+                    {
+                        IReadOnlyList<object> plugins = permitted.Count > 0
+                            ? [qBitTorrentPlugin]
+                            : [];
+
+                        var agenticRequest = new AgenticRequest(
+                            selectedModelName,
+                            taskPrompt.Trim(),
+                            plugins,
+                            MaxIterations: 10,
+                            StreamChunk: Console.Write);
+
+                        Console.WriteLine("Response:");
+                        var agenticResponse = await agenticExecutionService.ExecuteAsync(
+                            endpoint, agenticRequest, CancellationToken.None);
+                        Console.WriteLine();
+
+                        foreach (var tool in agenticResponse.ToolsInvoked)
+                            Console.WriteLine($"Tool: {tool}");
+                        Console.WriteLine($"Tools invoked: {agenticResponse.ToolsInvoked.Count}");
+
+                        if (agenticResponse.FinishReason == AgenticFinishReason.IterationLimitReached)
+                            Console.WriteLine("(iteration limit reached)");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Agentic execution failed: {ex.Message}");
+                    }
+                }
+            }
         }
     }
 }

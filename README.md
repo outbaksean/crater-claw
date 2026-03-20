@@ -12,6 +12,9 @@ The console harness supports:
 - Interactive model execution (single prompt/response)
 - MCP server listing with transport type and enabled status
 - MCP server availability checks (HTTP GET for http servers; PATH walk for stdio servers)
+- Behavior profile selection (`no-tools`, `qbittorrent-manager`)
+- Plugin function listing: after selecting a profile, the console displays the available kernel functions by name and description
+- Agentic task execution: after selecting a profile and model, enter a task prompt to run the SK agentic loop with the permitted plugins; tool invocations and the final response are displayed
 
 Configuration is layered: `craterclaw.json` (committed, no secrets) -> dotnet user secrets (dev) -> OS environment variables (deployment). Sensitive values such as MCP server credentials are stored outside the repository.
 
@@ -20,6 +23,7 @@ Configuration is layered: `craterclaw.json` (committed, no secrets) -> dotnet us
 - .NET SDK 10.x
 - Ollama running locally or on the LAN for provider connectivity (optional for tests)
 - `uv` on PATH for stdio MCP server availability checks (optional)
+- qBitTorrent running with WebUI enabled for qBitTorrent plugin features (optional)
 
 Check SDK version:
 
@@ -77,48 +81,31 @@ To override the active endpoint without editing the file, use a user secret:
 dotnet user-secrets set "providers:active" "lan" --project .\CraterClaw.Console
 ```
 
-### MCP servers
+### qBitTorrent plugin
 
-MCP server definitions live under `mcp.servers` in `craterclaw.json`. Sensitive env values are left as empty strings in the file:
-
-```json
-{
-    "mcp": {
-        "servers": {
-            "qbittorrent": {
-                "label": "qBitTorrent",
-                "transport": "Stdio",
-                "command": "uvx",
-                "args": [ "--from", "git+https://github.com/jmagar/yarr-mcp", "qbittorrent-mcp-server" ],
-                "env": {
-                    "QBITTORRENT_URL": "",
-                    "QBITTORRENT_USER": "",
-                    "QBITTORRENT_PASS": "",
-                    "QBITTORRENT_MCP_TRANSPORT": "stdio"
-                },
-                "enabled": true
-            }
-        }
-    }
-}
-```
-
-Set the real values using dotnet user secrets so they are never committed:
+qBitTorrent credentials live under `qbittorrent` in `craterclaw.json`. Leave the file values empty and supply real values via user secrets:
 
 ```powershell
-dotnet user-secrets set "mcp:servers:qbittorrent:env:QBITTORRENT_URL"  "http://192.168.1.x:8080" --project .\CraterClaw.Console
-dotnet user-secrets set "mcp:servers:qbittorrent:env:QBITTORRENT_USER" "admin"                    --project .\CraterClaw.Console
-dotnet user-secrets set "mcp:servers:qbittorrent:env:QBITTORRENT_PASS" "your-password"            --project .\CraterClaw.Console
+dotnet user-secrets set "qbittorrent:baseUrl"  "http://192.168.1.x:8080" --project .\CraterClaw.Console
+dotnet user-secrets set "qbittorrent:username" "admin"                    --project .\CraterClaw.Console
+dotnet user-secrets set "qbittorrent:password" "your-password"            --project .\CraterClaw.Console
 ```
+
+Note: the `--project` flag is required. Running `dotnet user-secrets` from the repository root without it will fail because there are multiple projects in the solution.
 
 User secrets are stored in `%APPDATA%\Microsoft\UserSecrets\craterclaw-console\secrets.json` on Windows, outside the repository.
 
-For deployment, use OS environment variables instead (`:` becomes `__` on platforms that do not support `:` in variable names; Windows supports `:` directly):
+For deployment, use OS environment variables:
 
 ```powershell
-$env:mcp__servers__qbittorrent__env__QBITTORRENT_URL  = "http://192.168.1.x:8080"
-$env:mcp__servers__qbittorrent__env__QBITTORRENT_PASS = "your-password"
+$env:qbittorrent__baseUrl  = "http://192.168.1.x:8080"
+$env:qbittorrent__username = "admin"
+$env:qbittorrent__password = "your-password"
 ```
+
+### MCP servers
+
+MCP server definitions live under `mcp.servers` in `craterclaw.json`. No servers are configured by default. Add entries here if future MCP servers are needed.
 
 ## Run the Console Harness
 
@@ -140,3 +127,6 @@ dotnet run --project .\CraterClaw.Console
 5. **Prompt** - enter a prompt and receive a response.
 6. **MCP server listing** - numbered list of configured servers with transport and enabled status.
 7. **Availability check** - select a server number or press Enter to skip.
+8. **Profile selection** - numbered list of behavior profiles; press Enter to skip.
+9. **Plugin function listing** - for profiles with permitted plugins (e.g. `qbittorrent-manager`), lists the available kernel functions by name and description. Profiles with no plugins (e.g. `no-tools`) display a "no functions available" message.
+10. **Task prompt** - enter a task and the agentic loop runs with the selected model and profile plugins. Each tool called is shown as `Tool: {name}`. The final response is shown under `Response:` followed by a tool invocation count. If the model hit the iteration limit before finishing, `(iteration limit reached)` is displayed.
