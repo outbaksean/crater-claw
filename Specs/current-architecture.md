@@ -64,6 +64,28 @@ ASP.NET Core minimal API. Loads `craterclaw.json` (optional, falls back to in-me
 
 Enums are serialized as strings (`JsonStringEnumConverter` applied globally).
 
+## CraterClaw.Web
+
+Vue 3 TypeScript frontend (Vite, Vitest). Consumes `CraterClaw.Api` over HTTP. API base URL read from `VITE_API_BASE_URL` environment variable (defaults to `http://localhost:5000`).
+
+### Project Layout
+- `src/api/types.ts` — shared TypeScript types mirroring all API response shapes.
+- `src/api/client.ts` — typed `fetch` wrappers for all API endpoints.
+- `src/composables/` — Vue composables for stateful data fetching.
+- `src/components/` — reusable UI components (populated in later phases).
+- `src/App.vue` — root component; wires composables to UI.
+
+### Implemented
+- `getProviders`, `getProviderStatus`, `getModels` in `client.ts`.
+- `useProviders` composable: fetches provider list, tracks selected provider, fetches and exposes status.
+- `useModels` composable: fetches models for selected provider, tracks selected model.
+- `App.vue`: numbered provider list, status indicator, model list (shown when provider is reachable), selected model display.
+
+### Planned (later phases)
+- Interactive execution (chat component)
+- Behavior profile selection and agentic execution panel
+- MCP server list and availability check panel
+
 ## Console Harness Flow
 1. Load `craterclaw.json` and user secrets.
 2. Display numbered list of configured endpoints; prompt for selection (blank = use default).

@@ -13,7 +13,12 @@
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:pypi.org)",
       "Bash(git add:*)",
-      "Bash(dotnet restore:*)"
+      "Bash(dotnet restore:*)",
+      "Bash(npm --version)",
+      "Bash(npm show:*)",
+      "Bash(npm install:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run:*)"
     ]
   }
 }
