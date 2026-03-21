@@ -12,6 +12,12 @@
 - User secrets (via .NET user secrets) — credentials and secret values.
 - `${VAR_NAME}` references in config values are resolved from OS user-level environment variables at point of use.
 
+### Configuration Types
+- `ProviderOptions` — named collection of endpoints (`BaseUrl`); `Active` names the default.
+- `McpOptions` — named collection of MCP server definitions (transport, URL or command, enabled flag).
+- `QBitTorrentOptions` — `BaseUrl`, `Username`, `Password`; bound to the `qbittorrent` config section.
+- `AiLoggingOptions` — `Enabled` (bool, default false), `Path` (string). Accepts a directory path or a file prefix. Bound to the `aiLogging` config section. No validator.
+
 ## CraterClaw.Core
 
 ### Provider Services
@@ -19,11 +25,6 @@
 - `IModelListingService` — lists downloaded models at a provider endpoint.
 - `IModelExecutionService` — sends a conversational prompt to a model and returns the response (Semantic Kernel-backed via Ollama chat completion).
 - `IAgenticExecutionService` (`SemanticKernelAgenticExecutionService`) — runs a Semantic Kernel tool-use loop. Sends a prompt, processes function calls, invokes tools via SK kernel, and iterates until the model stops calling tools or the iteration limit is reached. Supports optional streaming output via `AgenticRequest.StreamChunk`.
-
-### Configuration Types
-- `ProviderOptions` — named collection of endpoints (`BaseUrl`); `Active` names the default.
-- `McpOptions` — named collection of MCP server definitions (transport, URL or command, enabled flag).
-- `QBitTorrentOptions` — `BaseUrl`, `Username`, `Password`; bound to the `qbittorrent` config section.
 
 ### MCP
 - `IMcpAvailabilityService` — checks whether a configured MCP server is reachable.
@@ -45,9 +46,13 @@
   - `SearchTorrents` — starts a search job using installed qBitTorrent search plugins, polls until complete, returns a JSON array of results (fileName, fileUrl, fileSize, nbSeeders, nbLeechers, siteUrl). `maxResults` defaults to 10. File names are truncated to 120 characters and magnet link tracker parameters are stripped to reduce response size.
 
 ### Logging
-- Serilog with a rolling daily file sink in `logs/` relative to the console output directory.
-- Minimum level: Debug.
-- Registered via `AddLogging(b => b.AddSerilog(...))`.
+- Both the console and API use Serilog with sub-logger routing.
+- Main log: rolling daily file in `logs/` relative to the application base directory. Contains lifecycle events, warnings, and errors. The `CraterClaw.AiTraffic` category and `System.Net.Http` namespace are excluded.
+- AI log: rolling daily `.log` file written only when `aiLogging.enabled` is `true`. `aiLogging.path` may be a directory (files written as `ai-{date}.log` inside it) or a file prefix; defaults to `logs/ai-{date}.log`. Contains only `CraterClaw.AiTraffic` events: full Ollama request JSON and full response content with no truncation.
+- `OllamaModelExecutionService` and `SemanticKernelAgenticExecutionService` each hold a named logger `_aiLogger = loggerFactory.CreateLogger("CraterClaw.AiTraffic")` for AI-traffic detail.
+- Sensitive values (search queries, qBitTorrent credentials/URL) are not logged.
+- Minimum level: Debug. Both console and API apply `MinimumLevel.Override("System.Net.Http", Warning)` to suppress HTTP client request logs. The API additionally overrides `Microsoft` and `System` namespaces.
+- Registered via `AddLogging(b => b.AddSerilog(...))` in the console; via `builder.Host.UseSerilog(...)` in the API.
 
 ## CraterClaw.Api
 

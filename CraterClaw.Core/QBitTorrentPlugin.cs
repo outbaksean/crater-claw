@@ -23,7 +23,7 @@ public sealed class QBitTorrentPlugin(
         if (_sid is not null)
             return;
 
-        logger.LogDebug("Authenticating with qBitTorrent at {BaseUrl}", _options.BaseUrl);
+        logger.LogDebug("Authenticating with qBitTorrent");
 
         var baseUri = new Uri(_options.BaseUrl!);
         var origin = $"{baseUri.Scheme}://{baseUri.Authority}";
@@ -249,7 +249,7 @@ public sealed class QBitTorrentPlugin(
             var searchId = JsonNode.Parse(startJson)?["id"]?.GetValue<int>()
                 ?? throw new InvalidOperationException("Search start did not return an id.");
 
-            logger.LogDebug("SearchTorrents started job {SearchId} for query '{Query}' category '{Category}'", searchId, query, category);
+            logger.LogDebug("SearchTorrents started job {SearchId} category '{Category}'", searchId, category);
 
             var searchComplete = false;
             for (var i = 0; i < 30; i++)
@@ -309,7 +309,7 @@ public sealed class QBitTorrentPlugin(
                 };
             }).ToList();
 
-            logger.LogInformation("SearchTorrents job {SearchId} returned {Count} results for query '{Query}'", searchId, projected.Count, query);
+            logger.LogInformation("SearchTorrents job {SearchId} returned {Count} results", searchId, projected.Count);
 
             try
             {

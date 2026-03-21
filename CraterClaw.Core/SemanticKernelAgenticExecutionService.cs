@@ -7,8 +7,10 @@ namespace CraterClaw.Core;
 
 internal sealed class SemanticKernelAgenticExecutionService(
     IKernelFactory kernelFactory,
-    ILogger<SemanticKernelAgenticExecutionService> logger) : IAgenticExecutionService
+    ILogger<SemanticKernelAgenticExecutionService> logger,
+    ILoggerFactory loggerFactory) : IAgenticExecutionService
 {
+    private readonly ILogger _aiLogger = loggerFactory.CreateLogger("CraterClaw.AiTraffic");
     public async Task<AgenticResponse> ExecuteAsync(
         ProviderEndpoint endpoint,
         AgenticRequest request,
@@ -37,14 +39,13 @@ internal sealed class SemanticKernelAgenticExecutionService(
 
         for (var iteration = 0; iteration < request.MaxIterations; iteration++)
         {
-            logger.LogDebug("Iteration {Iteration}: sending {Count} messages to LLM", iteration, chatHistory.Count);
+            _aiLogger.LogDebug("Iteration {Iteration}: sending {Count} messages to LLM", iteration, chatHistory.Count);
             foreach (var msg in chatHistory)
             {
-                var preview = msg.Content?.Length > 200 ? msg.Content[..200] + "..." : msg.Content;
                 var functionCallSummary = string.Join(", ", msg.Items.OfType<FunctionCallContent>().Select(f => f.FunctionName));
                 var functionResultSummary = string.Join(", ", msg.Items.OfType<FunctionResultContent>().Select(f => $"{f.FunctionName}={f.Result}"));
-                logger.LogDebug("  [{Role}] content={Content} calls=[{Calls}] results=[{Results}]",
-                    msg.Role, preview, functionCallSummary, functionResultSummary);
+                _aiLogger.LogDebug("  [{Role}] content={Content} calls=[{Calls}] results=[{Results}]",
+                    msg.Role, msg.Content, functionCallSummary, functionResultSummary);
             }
 
             List<FunctionCallContent> functionCalls;
@@ -79,20 +80,19 @@ internal sealed class SemanticKernelAgenticExecutionService(
                     chatHistory.Add(new ChatMessageContent(AuthorRole.Assistant, contentBuilder.ToString()));
                 }
 
-                logger.LogDebug("Iteration {Iteration}: stream complete, calls=[{Calls}]",
-                    iteration, string.Join(", ", functionCalls.Select(f => f.FunctionName)));
+                _aiLogger.LogDebug("Iteration {Iteration}: stream complete, content={Content} calls=[{Calls}]",
+                    iteration, contentBuilder.ToString(), string.Join(", ", functionCalls.Select(f => f.FunctionName)));
             }
             else
             {
                 var messages = await chatService.GetChatMessageContentsAsync(
                     chatHistory, settings, kernel, cancellationToken);
 
-                logger.LogDebug("Iteration {Iteration}: received {Count} messages from LLM", iteration, messages.Count);
+                _aiLogger.LogDebug("Iteration {Iteration}: received {Count} messages from LLM", iteration, messages.Count);
                 foreach (var msg in messages)
                 {
-                    var preview = msg.Content?.Length > 200 ? msg.Content[..200] + "..." : msg.Content;
                     var functionCallSummary = string.Join(", ", msg.Items.OfType<FunctionCallContent>().Select(f => f.FunctionName));
-                    logger.LogDebug("  [{Role}] content={Content} calls=[{Calls}]", msg.Role, preview, functionCallSummary);
+                    _aiLogger.LogDebug("  [{Role}] content={Content} calls=[{Calls}]", msg.Role, msg.Content, functionCallSummary);
                 }
 
                 foreach (var msg in messages)

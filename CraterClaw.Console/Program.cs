@@ -6,14 +6,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
 
-var logDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
-var logPath = Path.Combine(logDirectory, "craterclaw-.log");
-
-Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Debug()
-    .WriteTo.File(logPath, rollingInterval: RollingInterval.Day)
-    .CreateLogger();
-
 var configPath = Path.Combine(AppContext.BaseDirectory, "craterclaw.json");
 
 var configuration = new ConfigurationBuilder()
@@ -21,6 +13,43 @@ var configuration = new ConfigurationBuilder()
     .AddUserSecrets<Program>()
     .AddEnvironmentVariables()
     .Build();
+
+var logDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
+var logPath = Path.Combine(logDirectory, "craterclaw-.log");
+
+var aiEnabled = configuration.GetValue<bool>("aiLogging:enabled");
+var aiPathConfig = configuration.GetValue<string>("aiLogging:path") ?? string.Empty;
+var aiLogPath = ResolveAiLogPath(aiPathConfig, logDirectory);
+
+static string ResolveAiLogPath(string configured, string defaultDirectory)
+{
+    if (string.IsNullOrWhiteSpace(configured))
+        return Path.Combine(defaultDirectory, "ai-.log");
+    var resolved = Path.IsPathRooted(configured)
+        ? configured
+        : Path.Combine(AppContext.BaseDirectory, configured);
+    if (Directory.Exists(resolved) || resolved.EndsWith(Path.DirectorySeparatorChar) || resolved.EndsWith(Path.AltDirectorySeparatorChar))
+        return Path.Combine(resolved.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), "ai-.log");
+    return resolved;
+}
+
+var logConfig = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .MinimumLevel.Override("System.Net.Http", Serilog.Events.LogEventLevel.Warning)
+    .WriteTo.Logger(lc => lc
+        .Filter.ByExcluding(e =>
+            e.Properties.TryGetValue("SourceContext", out var sc) &&
+            sc.ToString().Trim('"') == "CraterClaw.AiTraffic")
+        .WriteTo.File(logPath, rollingInterval: RollingInterval.Day));
+
+if (aiEnabled)
+    logConfig = logConfig.WriteTo.Logger(lc => lc
+        .Filter.ByIncludingOnly(e =>
+            e.Properties.TryGetValue("SourceContext", out var sc) &&
+            sc.ToString().Trim('"') == "CraterClaw.AiTraffic")
+        .WriteTo.File(aiLogPath, rollingInterval: RollingInterval.Day));
+
+Log.Logger = logConfig.CreateLogger();
 
 var services = new ServiceCollection();
 services.AddHttpClient();
@@ -41,6 +70,8 @@ var agenticExecutionService = provider.GetRequiredService<IAgenticExecutionServi
 try
 {
     Console.WriteLine($"Log file: {logDirectory}");
+    if (aiEnabled)
+        Console.WriteLine($"AI log file: {aiLogPath}");
 
     var endpoints = providerOptions.Endpoints;
 

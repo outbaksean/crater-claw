@@ -144,6 +144,28 @@ $env:qbittorrent__username = "admin"
 $env:qbittorrent__password = "your-password"
 ```
 
+### AI logging
+
+`aiLogging.enabled` (bool, default `false`) — when true, full Ollama request and response detail is written to a dedicated rolling log file separate from the main log.
+
+`aiLogging.path` (string, optional) — path for the AI log. Can be a directory path (`C:\ollama-logs`) or a file prefix (`C:\ollama-logs\ai-.log`). When a directory is given, files are written as `ai-{date}.log` inside it. When empty, defaults to `logs/ai-{date}.log` relative to the application directory. Can be absolute or relative to the app directory.
+
+The main log never contains message content or request JSON. The AI log only contains AI traffic detail.
+
+Enable via user secrets:
+
+```powershell
+dotnet user-secrets set "aiLogging:enabled" "true" --project .\CraterClaw.Console
+```
+
+To write the AI log to a dedicated directory:
+
+```powershell
+dotnet user-secrets set "aiLogging:path" "C:\ollama-logs" --project .\CraterClaw.Console
+```
+
+When AI logging is enabled, the console prints `AI log file: {path}` at startup alongside the main log directory.
+
 ### MCP servers
 
 MCP server definitions live under `mcp.servers` in `craterclaw.json`. No servers are configured by default. Add entries here if future MCP servers are needed.

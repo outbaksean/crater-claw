@@ -66,3 +66,4 @@ When all phases in a spec are Done, move the spec file to `archive/`.
 - Node is avaialble for scripting
 - Never use an icon or emoji in documentation or source code
 - When making a manual verification plan, note any dependencies
+- All code must be deployable on Linux: use `Path.Combine` for all paths, never hard-code backslashes, avoid Windows-only APIs

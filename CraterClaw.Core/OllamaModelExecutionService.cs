@@ -7,8 +7,11 @@ namespace CraterClaw.Core;
 
 internal sealed class OllamaModelExecutionService(
     HttpClient httpClient,
-    ILogger<OllamaModelExecutionService> logger) : IModelExecutionService
+    ILogger<OllamaModelExecutionService> logger,
+    ILoggerFactory loggerFactory) : IModelExecutionService
 {
+    private readonly ILogger _aiLogger = loggerFactory.CreateLogger("CraterClaw.AiTraffic");
+
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -43,7 +46,7 @@ internal sealed class OllamaModelExecutionService(
         var body = new OllamaChatRequest(request.ModelName, messages, Stream: false, options);
         var json = JsonSerializer.Serialize(body, SerializerOptions);
 
-        logger.LogDebug("Request body: {RequestJson}", json);
+        _aiLogger.LogDebug("Request body: {RequestJson}", json);
 
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -97,6 +100,7 @@ internal sealed class OllamaModelExecutionService(
             _ => FinishReason.Stop
         };
 
+        _aiLogger.LogDebug("Response content: {Content}", response.Message?.Content);
         logger.LogInformation("Model {ModelName} finished with reason {FinishReason}", request.ModelName, finishReason);
 
         return new ExecutionResponse(

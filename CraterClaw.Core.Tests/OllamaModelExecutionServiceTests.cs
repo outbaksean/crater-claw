@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CraterClaw.Core.Tests;
@@ -22,7 +23,7 @@ public sealed class OllamaModelExecutionServiceTests
             """;
 
         using var client = CreateClient(HttpStatusCode.OK, json);
-        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance, NullLoggerFactory.Instance);
 
         var request = new ExecutionRequest("llama3.2:latest", [new ConversationMessage(MessageRole.User, "Why is the sky blue?")]);
         var response = await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
@@ -45,7 +46,7 @@ public sealed class OllamaModelExecutionServiceTests
             """;
 
         using var client = CreateClient(HttpStatusCode.OK, json);
-        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance, NullLoggerFactory.Instance);
 
         var request = new ExecutionRequest("llama3.2:latest", [new ConversationMessage(MessageRole.User, "Tell me everything.")]);
         var response = await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
@@ -78,7 +79,7 @@ public sealed class OllamaModelExecutionServiceTests
             };
         });
 
-        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance, NullLoggerFactory.Instance);
         var request = new ExecutionRequest("llama3.2:latest", [new ConversationMessage(MessageRole.User, "Hi")]);
 
         await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
@@ -121,7 +122,7 @@ public sealed class OllamaModelExecutionServiceTests
             };
         });
 
-        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance, NullLoggerFactory.Instance);
         var request = new ExecutionRequest(
             "llama3.2:latest",
             [new ConversationMessage(MessageRole.User, "Hi")],
@@ -141,7 +142,7 @@ public sealed class OllamaModelExecutionServiceTests
     public async Task ExecuteAsync_ThrowsInvalidOperationException_ForNonSuccessHttpStatus()
     {
         using var client = CreateClient(HttpStatusCode.NotFound, string.Empty);
-        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance, NullLoggerFactory.Instance);
 
         var request = new ExecutionRequest("missing-model", [new ConversationMessage(MessageRole.User, "Hello")]);
 
@@ -153,7 +154,7 @@ public sealed class OllamaModelExecutionServiceTests
     public async Task ExecuteAsync_ThrowsInvalidOperationException_ForMalformedJson()
     {
         using var client = CreateClient(HttpStatusCode.OK, "{ not valid }");
-        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance, NullLoggerFactory.Instance);
 
         var request = new ExecutionRequest("llama3.2:latest", [new ConversationMessage(MessageRole.User, "Hello")]);
 
@@ -169,7 +170,7 @@ public sealed class OllamaModelExecutionServiceTests
             await Task.Delay(Timeout.Infinite, ct);
             return new HttpResponseMessage(HttpStatusCode.OK);
         });
-        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance, NullLoggerFactory.Instance);
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -177,6 +178,52 @@ public sealed class OllamaModelExecutionServiceTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             service.ExecuteAsync(TestEndpoint, request, cts.Token));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_LogsRequestJsonToAiLogger()
+    {
+        const string responseJson = """
+            {
+              "model": "llama3.2:latest",
+              "message": { "role": "assistant", "content": "Hello." },
+              "done": true,
+              "done_reason": "stop"
+            }
+            """;
+
+        var factory = new CapturingLoggerFactory();
+        using var client = CreateClient(HttpStatusCode.OK, responseJson);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance, factory);
+
+        await service.ExecuteAsync(TestEndpoint,
+            new ExecutionRequest("llama3.2:latest", [new ConversationMessage(MessageRole.User, "Hi")]),
+            CancellationToken.None);
+
+        Assert.Contains(factory.Messages, m => m.Contains("llama3.2:latest") && m.Contains("messages"));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_LogsResponseContentToAiLogger()
+    {
+        const string responseJson = """
+            {
+              "model": "llama3.2:latest",
+              "message": { "role": "assistant", "content": "unique-response-content-xyz" },
+              "done": true,
+              "done_reason": "stop"
+            }
+            """;
+
+        var factory = new CapturingLoggerFactory();
+        using var client = CreateClient(HttpStatusCode.OK, responseJson);
+        var service = new OllamaModelExecutionService(client, NullLogger<OllamaModelExecutionService>.Instance, factory);
+
+        await service.ExecuteAsync(TestEndpoint,
+            new ExecutionRequest("llama3.2:latest", [new ConversationMessage(MessageRole.User, "Hi")]),
+            CancellationToken.None);
+
+        Assert.Contains(factory.Messages, m => m.Contains("unique-response-content-xyz"));
     }
 
     private static HttpClient CreateClient(HttpStatusCode statusCode, string responseBody)
@@ -202,6 +249,23 @@ public sealed class OllamaModelExecutionServiceTests
             CancellationToken cancellationToken)
         {
             return handler(request, cancellationToken);
+        }
+    }
+
+    private sealed class CapturingLoggerFactory : ILoggerFactory
+    {
+        public List<string> Messages { get; } = [];
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(Messages);
+        public void AddProvider(ILoggerProvider provider) { }
+        public void Dispose() { }
+
+        private sealed class CapturingLogger(List<string> messages) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) => null;
+            public bool IsEnabled(LogLevel logLevel) => true;
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state,
+                Exception? exception, Func<TState, Exception?, string> formatter)
+                => messages.Add(formatter(state, exception));
         }
     }
 }
