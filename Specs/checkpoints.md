@@ -86,11 +86,11 @@ Depends on: vue-frontend
 PowerShell module (`tools/CraterClaw.psm1`) providing the `craterclaw` command from any directory. Subcommands: `run` (API + web in separate windows, or console harness), `build`, `test`, `format`. Install script (`tools/Install-CraterClaw.ps1`) sets `CRATERCLAW_ROOT` and patches the PS profile. Supports PS7 and Windows PowerShell 5.1.
 Depends on: vue-lint
 
-## Planned
-
 ### 18. ide-formatting
 
 Reconciled `.editorconfig` (LF everywhere, 2-space for web files) with Prettier. Added `.vscode/settings.json` with format on save and per-language formatter assignments. `npm run lint` and `dotnet format` both produce zero changes.
+
+## Planned
 
 ### behavior-refactor
 
@@ -99,6 +99,14 @@ Each behavior should be a preconfigured list of model, system prompt, available 
 ### behavior-secrets
 
 Audit behavior definitions for sensitive data — system prompts may reference personal details, internal instructions, or other content that should not be committed. Determine whether behavior definitions (or parts of them) should be stored in user secrets or environment variables rather than craterclaw.json. Implement whatever secret handling approach is appropriate and document the pattern for future behaviors.
+
+### ollama-lan
+
+Configure ollama to be avaiable on the lan.
+
+### media-server
+
+Ensure the media management server is available on the lan and ready for use with CraterClaw.
 
 ### media-library-config
 
@@ -137,4 +145,3 @@ Depends on: powershell-aliases
 
 Bash/zsh equivalent of the powershell-aliases module. Shell function file installed via install.sh to ~/.local/share/craterclaw/, sourced from .bashrc/.zshrc. Same craterclaw subcommand interface as the PowerShell module.
 Depends on: powershell-aliases
-
