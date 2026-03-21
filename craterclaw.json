@@ -15,5 +15,9 @@
         "baseUrl": "",
         "username": "",
         "password": ""
+    },
+    "aiLogging": {
+        "enabled": true,
+        "path": "C:\\ollama-logs"
     }
 }

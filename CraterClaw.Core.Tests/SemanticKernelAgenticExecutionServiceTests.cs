@@ -72,7 +72,8 @@ public sealed class SemanticKernelAgenticExecutionServiceTests
 
         var service = new SemanticKernelAgenticExecutionService(
             new FakeKernelFactory(kernel),
-            NullLogger<SemanticKernelAgenticExecutionService>.Instance);
+            NullLogger<SemanticKernelAgenticExecutionService>.Instance,
+            NullLoggerFactory.Instance);
 
         var request = new AgenticRequest("test-model", "Get the value.", [], MaxIterations: 10);
         var result = await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
@@ -89,7 +90,8 @@ public sealed class SemanticKernelAgenticExecutionServiceTests
         var kernel = builder.Build();
         return new SemanticKernelAgenticExecutionService(
             new FakeKernelFactory(kernel),
-            NullLogger<SemanticKernelAgenticExecutionService>.Instance);
+            NullLogger<SemanticKernelAgenticExecutionService>.Instance,
+            NullLoggerFactory.Instance);
     }
 
     private sealed class FakeKernelFactory(Kernel kernel) : IKernelFactory

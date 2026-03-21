@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using CraterClaw.Core;
 using Microsoft.Extensions.Options;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,44 @@ builder.Configuration.AddJsonFile("craterclaw.json", optional: true);
 builder.Configuration.AddUserSecrets<Program>();
 builder.Configuration.AddEnvironmentVariables();
 builder.Configuration.AddCommandLine(args);
+
+var logDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
+var logPath = Path.Combine(logDirectory, "craterclaw-api-.log");
+
+var aiEnabled = builder.Configuration.GetValue<bool>("aiLogging:enabled");
+var aiPathConfig = builder.Configuration.GetValue<string>("aiLogging:path") ?? string.Empty;
+var aiLogPath = ResolveAiLogPath(aiPathConfig, logDirectory);
+
+static string ResolveAiLogPath(string configured, string defaultDirectory)
+{
+    if (string.IsNullOrWhiteSpace(configured))
+        return Path.Combine(defaultDirectory, "ai-api-.log");
+    var resolved = Path.IsPathRooted(configured)
+        ? configured
+        : Path.Combine(AppContext.BaseDirectory, configured);
+    if (Directory.Exists(resolved) || resolved.EndsWith(Path.DirectorySeparatorChar) || resolved.EndsWith(Path.AltDirectorySeparatorChar))
+        return Path.Combine(resolved.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), "ai-.log");
+    return resolved;
+}
+
+var logConfig = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
+    .WriteTo.Logger(lc => lc
+        .Filter.ByExcluding(e =>
+            e.Properties.TryGetValue("SourceContext", out var sc) &&
+            sc.ToString().Trim('"') == "CraterClaw.AiTraffic")
+        .WriteTo.File(logPath, rollingInterval: RollingInterval.Day));
+
+if (aiEnabled)
+    logConfig = logConfig.WriteTo.Logger(lc => lc
+        .Filter.ByIncludingOnly(e =>
+            e.Properties.TryGetValue("SourceContext", out var sc) &&
+            sc.ToString().Trim('"') == "CraterClaw.AiTraffic")
+        .WriteTo.File(aiLogPath, rollingInterval: RollingInterval.Day));
+
+builder.Host.UseSerilog(logConfig.CreateLogger(), dispose: true);
 
 builder.Services.AddCraterClawCore(builder.Configuration);
 builder.Services.ConfigureHttpJsonOptions(options =>

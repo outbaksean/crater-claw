@@ -31,6 +31,9 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<QBitTorrentOptions>, QBitTorrentOptionsValidator>();
 
+        services.AddOptions<AiLoggingOptions>()
+            .Bind(configuration.GetSection("aiLogging"));
+
         services.AddTransient<IProviderStatusService, OllamaProviderStatusService>();
         services.AddTransient<IModelListingService, OllamaModelListingService>();
         services.AddTransient<IModelExecutionService, OllamaModelExecutionService>();

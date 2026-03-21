@@ -72,11 +72,15 @@ Configure VS Code launch configurations and pre-launch build tasks to support C#
 Redesign the Vue frontend with a unified monospace dark workspace aesthetic: DM Mono + Syne fonts, CSS design token system, panel layout with progressive disclosure, left-border selection pattern, inline status pills, textarea inputs with Enter-to-submit, animated loading states, and panel reveal transitions.
 Depends on: vue-frontend (checkpoint 12)
 
+### 16. logging-breakout-ollama-responses
+
+Log ollama requests and responses separately from main logging. AI traffic logged under `CraterClaw.AiTraffic` category, routed to a separate rolling file when `aiLogging.enabled` is true. Main log excludes AI traffic. Both console and API use the same sub-logger Serilog configuration. Full content logged with no truncation.
+
 ## Planned
 
 ### behavior-refactor
 
-Each behavior should be a preconfigured list of model, system prompt, available plugins/tools with a name.
+Each behavior should be a preconfigured list of model, system prompt, available plugins/tools with a name. All behavior details should be separate the agentic core services. craterclaw.json should define behaviors.
 
 ### powershell-aliases
 
@@ -90,11 +94,11 @@ Verify automatic formatting commands do the same as vscode on save formatting
 
 Add behavior to manage media. Download from FTP to network path mainly, to be used with the qBitTorrent behavior
 
-## logging-breakout-ollama-responses
-
-Log ollama requests and responses separately from main logging
-
-## thinking-mode-ollama
+### thinking-mode-ollama
 
 Enable thinking mode by using OllamaPromptExecutionSettings instead of PromptExecutionSettings in SemanticKernelAgenticExecutionService and include "think" true in AdditionalProperties. Thinking should be toggleable by the user.
+
+### web-ux-refactor-2
+
+Refactor the web ux with better placement of providers, models, behavior, chat boxes
 
