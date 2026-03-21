@@ -76,23 +76,49 @@ Depends on: vue-frontend (checkpoint 12)
 
 Log ollama requests and responses separately from main logging. AI traffic logged under `CraterClaw.AiTraffic` category, routed to a separate rolling file when `aiLogging.enabled` is true. Main log excludes AI traffic. Both console and API use the same sub-logger Serilog configuration. Full content logged with no truncation.
 
+### 17. vue-lint
+
+Add ESLint to the Vue project with the Vue and TypeScript plugins, flat config format, Vitest globals, and Prettier configured with LF line endings. `npm run lint` and `npm run lint:fix` work end to end with zero errors.
+Depends on: vue-frontend
+
+### 19. powershell-aliases
+
+PowerShell module (`tools/CraterClaw.psm1`) providing the `craterclaw` command from any directory. Subcommands: `run` (API + web in separate windows, or console harness), `build`, `test`, `format`. Install script (`tools/Install-CraterClaw.ps1`) sets `CRATERCLAW_ROOT` and patches the PS profile. Supports PS7 and Windows PowerShell 5.1.
+Depends on: vue-lint
+
 ## Planned
+
+### 18. ide-formatting
+
+Reconciled `.editorconfig` (LF everywhere, 2-space for web files) with Prettier. Added `.vscode/settings.json` with format on save and per-language formatter assignments. `npm run lint` and `dotnet format` both produce zero changes.
 
 ### behavior-refactor
 
 Each behavior should be a preconfigured list of model, system prompt, available plugins/tools with a name. All behavior details should be separate the agentic core services. craterclaw.json should define behaviors.
 
-### powershell-aliases
+### behavior-secrets
 
-Create and document usefull powershell aliases for running, testing, linting etc.
+Audit behavior definitions for sensitive data — system prompts may reference personal details, internal instructions, or other content that should not be committed. Determine whether behavior definitions (or parts of them) should be stored in user secrets or environment variables rather than craterclaw.json. Implement whatever secret handling approach is appropriate and document the pattern for future behaviors.
 
-### ide-formatting
+### media-library-config
 
-Verify automatic formatting commands do the same as vscode on save formatting
+Add a `mediaLibrary` configuration section to `craterclaw.json` defining the network root path and named category directories (e.g. movies, tv). Add FTP server credentials (host, port, username, password) under a separate `ftp` section. Bind both to new options types with validation. No tools yet — config and options types only.
+
+### media-library-tool
+
+SK kernel plugin that operates on the configured local media library. Functions: list files in a category directory, check whether a title already exists anywhere in the library, move a file from a staging location into the correct category directory. Depends on: media-library-config.
+
+### ftp-client-tool
+
+SK kernel plugin for transferring files from a remote FTP server to the local media library. Functions: list files in a remote directory, download a file from a remote path to a local category directory. Uses the configured FTP credentials. Depends on: media-library-config.
+
+### agentic-error-recovery
+
+Investigate and address error handling and recovery patterns across the agentic loop and plugins. To be scoped when the media plugins exist and real failure modes are known.
 
 ### media-management-tool
 
-Add behavior to manage media. Download from FTP to network path mainly, to be used with the qBitTorrent behavior
+Orchestration behavior tying the media plugins together: download from FTP to the correct library directory, verify the file landed in the library, and delete the corresponding torrent from qBitTorrent if the title is already present in the library. Depends on: media-library-tool, ftp-client-tool, qbittorrent-plugin.
 
 ### thinking-mode-ollama
 
@@ -101,4 +127,14 @@ Enable thinking mode by using OllamaPromptExecutionSettings instead of PromptExe
 ### web-ux-refactor-2
 
 Refactor the web ux with better placement of providers, models, behavior, chat boxes
+
+### craterclaw-config-override
+
+Add support for an alternate `craterclaw.json` path via a command-line argument or environment variable in both the console and API. Expose this as `--config <path>` in the `craterclaw run` and `craterclaw run --console` commands.
+Depends on: powershell-aliases
+
+### linux-aliases
+
+Bash/zsh equivalent of the powershell-aliases module. Shell function file installed via install.sh to ~/.local/share/craterclaw/, sourced from .bashrc/.zshrc. Same craterclaw subcommand interface as the PowerShell module.
+Depends on: powershell-aliases
 
