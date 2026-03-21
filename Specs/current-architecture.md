@@ -7,6 +7,12 @@
 - `CraterClaw.Core.Tests` — xUnit unit tests (.NET 10)
 - `CraterClaw.Api.Tests` — xUnit integration tests using `WebApplicationFactory` (.NET 10)
 
+## Formatting
+- `.editorconfig` — LF line endings everywhere, 4-space indent for C#/JSON, 2-space for JS/TS/Vue/MJS.
+- `.vscode/settings.json` — format on save enabled; Prettier is the default formatter for web files, C# extension for `.cs` files.
+- C#: `dotnet format` reads style rules from `.editorconfig`.
+- Vue/TS: Prettier via `npm run lint:fix`; configured in `.prettierrc.json` with `endOfLine: lf`.
+
 ## Configuration
 - `craterclaw.json` in the console output directory — provider endpoints, MCP server definitions, qBitTorrent connection details.
 - User secrets (via .NET user secrets) — credentials and secret values.
@@ -91,6 +97,8 @@ Vue 3 TypeScript frontend (Vite, Vitest). Consumes `CraterClaw.Api` over HTTP. A
 - `ProfileSelector` component: numbered list of profiles with name and description.
 - `AgenticPanel` component: task prompt input, displays response content, finish reason, and tools invoked list.
 - `App.vue`: provider list, status indicator, model list, chat panel, profile selector, agentic panel (shown when provider + model + profile are all selected).
+
+ESLint is configured via `eslint.config.mjs` using flat config format with `eslint-plugin-vue` (flat/essential), `@vue/eslint-config-typescript`, and `@vue/eslint-config-prettier`. Vitest globals (`describe`, `it`, `test`, `expect`, `vi`, etc.) are registered for `*.spec.ts` and `*.test.ts` files. Prettier is configured with `endOfLine: lf` for cross-platform consistency. `npm run lint` and `npm run lint:fix` are available.
 
 MCP server UI is not implemented in the frontend. The API endpoints exist but are not surfaced in the Vue app.
 

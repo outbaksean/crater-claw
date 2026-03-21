@@ -9,80 +9,80 @@ vi.mock('../api/client')
 const mockPostExecute = vi.mocked(client.postExecute)
 
 beforeEach(() => {
-    vi.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 function mountChat() {
-    return mount(InteractiveChat, {
-        props: { providerName: 'local', modelName: 'qwen3:8b' },
-    })
+  return mount(InteractiveChat, {
+    props: { providerName: 'local', modelName: 'qwen3:8b' },
+  })
 }
 
 describe('InteractiveChat', () => {
-    it('renders empty state initially', () => {
-        const wrapper = mountChat()
-        expect(wrapper.text()).toContain('No messages yet.')
+  it('renders empty state initially', () => {
+    const wrapper = mountChat()
+    expect(wrapper.text()).toContain('No messages yet.')
+  })
+
+  it('submits message on button click and displays response', async () => {
+    mockPostExecute.mockResolvedValue({
+      content: 'Hello!',
+      modelName: 'qwen3:8b',
+      finishReason: 'Completed',
     })
 
-    it('submits message on button click and displays response', async () => {
-        mockPostExecute.mockResolvedValue({
-            content: 'Hello!',
-            modelName: 'qwen3:8b',
-            finishReason: 'Completed',
-        })
+    const wrapper = mountChat()
+    await wrapper.find('textarea').setValue('Hi')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
 
-        const wrapper = mountChat()
-        await wrapper.find('textarea').setValue('Hi')
-        await wrapper.find('form').trigger('submit')
-        await flushPromises()
+    const messages = wrapper.findAll('.message')
+    expect(messages[0].text()).toContain('Hi')
+    expect(messages[1].text()).toContain('Hello!')
+  })
 
-        const messages = wrapper.findAll('.message')
-        expect(messages[0].text()).toContain('Hi')
-        expect(messages[1].text()).toContain('Hello!')
+  it('disables textarea and button while loading', async () => {
+    let resolve: (v: unknown) => void
+    mockPostExecute.mockReturnValue(new Promise((r) => (resolve = r)))
+
+    const wrapper = mountChat()
+    await wrapper.find('textarea').setValue('Hi')
+    await wrapper.find('form').trigger('submit')
+    await nextTick()
+
+    expect(wrapper.find('textarea').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('button').attributes('disabled')).toBeDefined()
+
+    resolve!({
+      content: 'done',
+      modelName: 'qwen3:8b',
+      finishReason: 'Completed',
+    })
+  })
+
+  it('clears the textarea after submitting', async () => {
+    mockPostExecute.mockResolvedValue({
+      content: 'Hi back',
+      modelName: 'qwen3:8b',
+      finishReason: 'Completed',
     })
 
-    it('disables textarea and button while loading', async () => {
-        let resolve: (v: unknown) => void
-        mockPostExecute.mockReturnValue(new Promise((r) => (resolve = r)))
+    const wrapper = mountChat()
+    await wrapper.find('textarea').setValue('Hello')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.find('textarea').element.value).toBe('')
+  })
 
-        const wrapper = mountChat()
-        await wrapper.find('textarea').setValue('Hi')
-        await wrapper.find('form').trigger('submit')
-        await nextTick()
+  it('displays error message on failure', async () => {
+    mockPostExecute.mockRejectedValue(new Error('timeout'))
 
-        expect(wrapper.find('textarea').attributes('disabled')).toBeDefined()
-        expect(wrapper.find('button').attributes('disabled')).toBeDefined()
+    const wrapper = mountChat()
+    await wrapper.find('textarea').setValue('Hi')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
 
-        resolve!({
-            content: 'done',
-            modelName: 'qwen3:8b',
-            finishReason: 'Completed',
-        })
-    })
-
-    it('clears the textarea after submitting', async () => {
-        mockPostExecute.mockResolvedValue({
-            content: 'Hi back',
-            modelName: 'qwen3:8b',
-            finishReason: 'Completed',
-        })
-
-        const wrapper = mountChat()
-        await wrapper.find('textarea').setValue('Hello')
-        await wrapper.find('form').trigger('submit')
-        await flushPromises()
-        expect(wrapper.find('textarea').element.value).toBe('')
-    })
-
-    it('displays error message on failure', async () => {
-        mockPostExecute.mockRejectedValue(new Error('timeout'))
-
-        const wrapper = mountChat()
-        await wrapper.find('textarea').setValue('Hi')
-        await wrapper.find('form').trigger('submit')
-        await flushPromises()
-
-        expect(wrapper.find('.error').exists()).toBe(true)
-        expect(wrapper.find('.error').text()).toContain('timeout')
-    })
+    expect(wrapper.find('.error').exists()).toBe(true)
+    expect(wrapper.find('.error').text()).toContain('timeout')
+  })
 })

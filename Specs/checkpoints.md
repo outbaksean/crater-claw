@@ -76,21 +76,21 @@ Depends on: vue-frontend (checkpoint 12)
 
 Log ollama requests and responses separately from main logging. AI traffic logged under `CraterClaw.AiTraffic` category, routed to a separate rolling file when `aiLogging.enabled` is true. Main log excludes AI traffic. Both console and API use the same sub-logger Serilog configuration. Full content logged with no truncation.
 
-## Planned
+### 17. vue-lint
 
-### vue-lint
-
-Add ESLint to the Vue project with the Vue and TypeScript plugins. Add `lint` and `lint:fix` scripts to package.json. Required before powershell-aliases so the format command works end to end.
+Add ESLint to the Vue project with the Vue and TypeScript plugins, flat config format, Vitest globals, and Prettier configured with LF line endings. `npm run lint` and `npm run lint:fix` work end to end with zero errors.
 Depends on: vue-frontend
+
+## Planned
 
 ### powershell-aliases
 
 PowerShell module providing a `craterclaw` command available from any directory. Subcommands for running, building, testing, and formatting the solution. Install script sets up the module and profile import.
 Depends on: vue-lint
 
-### ide-formatting
+### 18. ide-formatting
 
-Verify automatic formatting commands do the same as vscode on save formatting
+Reconciled `.editorconfig` (LF everywhere, 2-space for web files) with Prettier. Added `.vscode/settings.json` with format on save and per-language formatter assignments. `npm run lint` and `dotnet format` both produce zero changes.
 
 ### behavior-refactor
 

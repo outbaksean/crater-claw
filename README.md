@@ -42,6 +42,21 @@ dotnet --version
 - `CraterClaw.Core.Tests`: xUnit unit tests for the core library (no live Ollama required)
 - `CraterClaw.Api.Tests`: xUnit integration tests for the web API
 
+## Formatting
+
+VS Code formats on save automatically when the Prettier (`esbenp.prettier-vscode`) and C# (`ms-dotnettools.csharp`) extensions are installed.
+
+To format from the command line:
+
+```powershell
+dotnet format .\CraterClaw.slnx
+```
+
+```powershell
+cd .\CraterClaw.Web
+npm run lint:fix
+```
+
 ## Restore and Build
 
 From the repository root:
@@ -74,6 +89,14 @@ Run Vue unit tests:
 ```powershell
 cd .\CraterClaw.Web
 npm test
+```
+
+Lint Vue source:
+
+```powershell
+cd .\CraterClaw.Web
+npm run lint
+npm run lint:fix
 ```
 
 ## Run the Web API
