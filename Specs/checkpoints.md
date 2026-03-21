@@ -81,12 +81,12 @@ Log ollama requests and responses separately from main logging. AI traffic logge
 Add ESLint to the Vue project with the Vue and TypeScript plugins, flat config format, Vitest globals, and Prettier configured with LF line endings. `npm run lint` and `npm run lint:fix` work end to end with zero errors.
 Depends on: vue-frontend
 
-## Planned
+### 19. powershell-aliases
 
-### powershell-aliases
-
-PowerShell module providing a `craterclaw` command available from any directory. Subcommands for running, building, testing, and formatting the solution. Install script sets up the module and profile import.
+PowerShell module (`tools/CraterClaw.psm1`) providing the `craterclaw` command from any directory. Subcommands: `run` (API + web in separate windows, or console harness), `build`, `test`, `format`. Install script (`tools/Install-CraterClaw.ps1`) sets `CRATERCLAW_ROOT` and patches the PS profile. Supports PS7 and Windows PowerShell 5.1.
 Depends on: vue-lint
+
+## Planned
 
 ### 18. ide-formatting
 

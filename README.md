@@ -22,6 +22,7 @@ Configuration is layered: `craterclaw.json` (committed, no secrets) -> dotnet us
 
 - .NET SDK 10.x
 - Node.js 20.x and npm 10.x (for `CraterClaw.Web`)
+- PowerShell 7.x (for `craterclaw` developer commands — install with `winget install Microsoft.PowerShell`)
 - Ollama running locally or on the LAN for provider connectivity (optional for tests)
 - `uv` on PATH for stdio MCP server availability checks (optional)
 - qBitTorrent running with WebUI enabled for qBitTorrent plugin features (optional)
@@ -41,6 +42,43 @@ dotnet --version
 - `CraterClaw.Web`: Vue 3 TypeScript frontend consuming the API
 - `CraterClaw.Core.Tests`: xUnit unit tests for the core library (no live Ollama required)
 - `CraterClaw.Api.Tests`: xUnit integration tests for the web API
+
+## Developer Commands
+
+The `craterclaw` PowerShell module provides a single command for common development tasks, available from any directory.
+
+Requires PowerShell 7. Install with `winget install Microsoft.PowerShell` if not already on 7.x.
+
+### One-time setup
+
+Run the install script from the repository root:
+
+```powershell
+.\tools\Install-CraterClaw.ps1
+```
+
+This copies the module to your PowerShell modules directory, sets the `CRATERCLAW_ROOT` environment variable, and adds `Import-Module CraterClaw` to your profile. Run `Import-Module CraterClaw` or open a new session to activate it.
+
+To uninstall:
+
+```powershell
+.\tools\Uninstall-CraterClaw.ps1
+```
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `craterclaw run` | Start the API and Vue dev server in separate windows |
+| `craterclaw run -ApiOnly` | Start only the API |
+| `craterclaw run -WebOnly` | Start only the Vue dev server |
+| `craterclaw run -Console` | Start the console harness in the current terminal |
+| `craterclaw build` | Build the .NET solution |
+| `craterclaw test` | Run all tests (dotnet + npm) |
+| `craterclaw test -Project core` | Run core tests only (`core`, `api`, or `web`) |
+| `craterclaw format` | Format all source (dotnet format + npm run lint:fix) |
+| `craterclaw format -Project web` | Format one project (`core`, `api`, or `web`) |
+| `craterclaw format -Check` | Verify formatting without making changes |
 
 ## Formatting
 

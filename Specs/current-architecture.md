@@ -7,6 +7,11 @@
 - `CraterClaw.Core.Tests` — xUnit unit tests (.NET 10)
 - `CraterClaw.Api.Tests` — xUnit integration tests using `WebApplicationFactory` (.NET 10)
 
+## Developer Tooling
+
+- `tools/CraterClaw.psm1` — PowerShell module exporting the `craterclaw` command. Reads `CRATERCLAW_ROOT` env var at runtime. Subcommands: `run`, `build`, `test`, `format`. Opens separate windows for API and web dev server; runs console harness in the current terminal.
+- `tools/Install-CraterClaw.ps1` — idempotent install script. Copies the module to the user's PowerShell modules directory, sets `CRATERCLAW_ROOT` as a persistent user environment variable, and adds `Import-Module CraterClaw` to the profile. Supports both PowerShell 7 (Core) and Windows PowerShell 5.1.
+
 ## Formatting
 - `.editorconfig` — LF line endings everywhere, 4-space indent for C#/JSON, 2-space for JS/TS/Vue/MJS.
 - `.vscode/settings.json` — format on save enabled; Prettier is the default formatter for web files, C# extension for `.cs` files.

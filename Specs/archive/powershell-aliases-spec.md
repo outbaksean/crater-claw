@@ -59,7 +59,7 @@ Each subcommand should surface the exit code of the underlying process. If a pro
 
 ## Phase 1: Module, Install Script, and All Commands
 
-**Status: Pending**
+**Status: Done**
 
 ### Contract
 
