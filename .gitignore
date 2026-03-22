@@ -58,6 +58,9 @@ nunit-*.xml
 !.vscode/extensions.json
 !.vscode/tasks.json
 
+# Claude Code
+.claude/
+
 # Secret files
 .env
 *.secrets.json
