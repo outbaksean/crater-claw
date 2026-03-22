@@ -65,6 +65,7 @@ When all phases in a spec are Done, move the spec file to `archive/`.
 - Each spec gets one feature branch, named after the checkpoint (e.g., `spec/behavior-refactor`).
 - The PR is opened when the spec is complete (all phases done) and ready for review.
 - The user manages all git and GitHub commands manually. Do not run any git or GitHub commands unless explicitly instructed.
+- Exception: agents running in an isolated worktree should commit their changes there. Use a descriptive commit message. Do not push.
 
 ## Other Notes
 
