@@ -83,6 +83,7 @@ To uninstall:
 | `craterclaw run -ApiOnly`        | Start only the API                                   |
 | `craterclaw run -WebOnly`        | Start only the Vue dev server                        |
 | `craterclaw run -Console`        | Start the console harness in the current terminal    |
+| `craterclaw run -Config <path>`  | Use an alternate config file (relative or absolute)  |
 | `craterclaw build`               | Build the .NET solution                              |
 | `craterclaw test`                | Run all tests (dotnet + npm)                         |
 | `craterclaw test -Project core`  | Run core tests only (`core`, `api`, or `web`)        |
@@ -160,6 +161,15 @@ The API reads its own `CraterClaw.Api/craterclaw.json`. Configure provider endpo
 ## Configuration
 
 A single `craterclaw.json` lives at the repository root and is shared by both `CraterClaw.Console` and `CraterClaw.Api`. It is copied to each project's output directory at build time. The file is committed with placeholder values for any secrets. Real values are supplied at runtime via dotnet user secrets (development) or OS environment variables (deployment).
+
+To run with a different config file without changing the committed one:
+
+```powershell
+craterclaw run -Config .\my-local.json
+craterclaw run -Console -Config .\my-local.json
+```
+
+The path is resolved to absolute before being passed to the .NET app. The `CRATERCLAW_CONFIG` environment variable can also be set directly to override the config path.
 
 ### Provider endpoints
 

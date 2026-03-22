@@ -9,7 +9,7 @@
 
 ## Developer Tooling
 
-- `tools/CraterClaw.psm1` — PowerShell module exporting the `craterclaw` command. Reads `CRATERCLAW_ROOT` env var at runtime. Subcommands: `run`, `build`, `test`, `format`. Opens separate windows for API and web dev server; runs console harness in the current terminal.
+- `tools/CraterClaw.psm1` — PowerShell module exporting the `craterclaw` command. Reads `CRATERCLAW_ROOT` env var at runtime. Subcommands: `run`, `build`, `test`, `format`. Opens separate windows for API and web dev server; runs console harness in the current terminal. `run` accepts `-Config <path>` to pass an alternate config file to the .NET app; path is resolved to absolute before forwarding.
 - `tools/Install-CraterClaw.ps1` — idempotent install script. Copies the module to the user's PowerShell modules directory, sets `CRATERCLAW_ROOT` as a persistent user environment variable, and adds `Import-Module CraterClaw` to the profile. Supports both PowerShell 7 (Core) and Windows PowerShell 5.1.
 
 ## Formatting
@@ -19,9 +19,10 @@
 - Vue/TS: Prettier via `npm run lint:fix`; configured in `.prettierrc.json` with `endOfLine: lf`.
 
 ## Configuration
-- `craterclaw.json` in the console output directory — provider endpoints, MCP server definitions, qBitTorrent connection details.
+- `craterclaw.json` in the console output directory — provider endpoints, MCP server definitions, behavior definitions with plugin bindings.
 - User secrets (via .NET user secrets) — credentials and secret values.
 - `${VAR_NAME}` references in config values are resolved from OS user-level environment variables at point of use.
+- Config path resolution priority (highest to lowest): `CRATERCLAW_CONFIG` environment variable, `--config <path>` CLI argument, default `AppContext.BaseDirectory/craterclaw.json`. The PowerShell `-Config` parameter forwards the resolved absolute path as `--config`.
 
 ### Configuration Types
 - `ProviderOptions` — named collection of endpoints (`BaseUrl`); `Active` names the default.
@@ -118,7 +119,7 @@ ESLint is configured via `eslint.config.mjs` using flat config format with `esli
 MCP server UI is not implemented in the frontend. The API endpoints exist but are not surfaced in the Vue app.
 
 ## Console Harness Flow
-1. Load `craterclaw.json` and user secrets.
+1. Load config file (path resolved from `CRATERCLAW_CONFIG` env var, `--config` arg, or default `craterclaw.json`) and user secrets.
 2. Display numbered list of configured endpoints; prompt for selection (blank = use default).
 3. Check endpoint reachability; display result.
 4. If reachable: list downloaded models; prompt for model selection.

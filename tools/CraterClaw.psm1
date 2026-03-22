@@ -4,6 +4,7 @@ function craterclaw {
         [Parameter(Position = 0)]
         [string]$Subcommand = '',
         [string]$Project = '',
+        [string]$Config = '',
         [switch]$ApiOnly,
         [switch]$WebOnly,
         [switch]$Console,
@@ -17,7 +18,7 @@ function craterclaw {
     }
 
     switch ($Subcommand.ToLowerInvariant()) {
-        'run'    { Invoke-CcRun    -Root $root -ApiOnly:$ApiOnly -WebOnly:$WebOnly -UseConsole:$Console }
+        'run'    { Invoke-CcRun    -Root $root -ApiOnly:$ApiOnly -WebOnly:$WebOnly -UseConsole:$Console -Config $Config }
         'build'  { Invoke-CcBuild  -Root $root }
         'test'   { Invoke-CcTest   -Root $root -Project $Project }
         'format' { Invoke-CcFormat -Root $root -Project $Project -Check:$Check }
@@ -26,10 +27,21 @@ function craterclaw {
 }
 
 function Invoke-CcRun {
-    param([string]$Root, [switch]$ApiOnly, [switch]$WebOnly, [switch]$UseConsole)
+    param([string]$Root, [string]$Config = '', [switch]$ApiOnly, [switch]$WebOnly, [switch]$UseConsole)
+
+    $configArg = ''
+    if ($Config) {
+        $resolvedConfig = (Resolve-Path -LiteralPath $Config).Path
+        $configArg = " -- --config `"$resolvedConfig`""
+    }
 
     if ($UseConsole) {
-        & dotnet run --project (Join-Path $Root 'CraterClaw.Console')
+        $consolePath = Join-Path $Root 'CraterClaw.Console'
+        if ($Config) {
+            & dotnet run --project $consolePath -- --config $resolvedConfig
+        } else {
+            & dotnet run --project $consolePath
+        }
         return
     }
 
@@ -37,7 +49,7 @@ function Invoke-CcRun {
 
     if (-not $WebOnly) {
         $apiPath = Join-Path $Root 'CraterClaw.Api'
-        Start-Process $psExe -ArgumentList '-NoExit', '-Command', "dotnet run --project `"$apiPath`""
+        Start-Process $psExe -ArgumentList '-NoExit', '-Command', "dotnet run --project `"$apiPath`"$configArg"
     }
 
     if (-not $ApiOnly) {
@@ -128,6 +140,7 @@ function Write-CcUsage {
     Write-Host '    -ApiOnly       Start only the API'
     Write-Host '    -WebOnly       Start only the Vue dev server'
     Write-Host '    -Console       Start the console harness in the current terminal'
+    Write-Host '    -Config        Path to an alternate craterclaw.json (relative or absolute)'
     Write-Host '  build            Build the .NET solution'
     Write-Host '  test             Run all tests'
     Write-Host '    -Project       Run tests for one project: core, api, web'

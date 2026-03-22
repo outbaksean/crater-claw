@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
 
-var configPath = Path.Combine(AppContext.BaseDirectory, "craterclaw.json");
+var configPath = ResolveConfigPath(args, Path.Combine(AppContext.BaseDirectory, "craterclaw.json"));
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile(configPath, optional: false)
@@ -20,6 +20,19 @@ var logPath = Path.Combine(logDirectory, "craterclaw-.log");
 var aiEnabled = configuration.GetValue<bool>("aiLogging:enabled");
 var aiPathConfig = configuration.GetValue<string>("aiLogging:path") ?? string.Empty;
 var aiLogPath = ResolveAiLogPath(aiPathConfig, logDirectory);
+
+static string ResolveConfigPath(string[] args, string defaultPath)
+{
+    var envPath = Environment.GetEnvironmentVariable("CRATERCLAW_CONFIG");
+    if (!string.IsNullOrWhiteSpace(envPath))
+        return envPath;
+
+    for (var i = 0; i < args.Length - 1; i++)
+        if (args[i] == "--config")
+            return args[i + 1];
+
+    return defaultPath;
+}
 
 static string ResolveAiLogPath(string configured, string defaultDirectory)
 {

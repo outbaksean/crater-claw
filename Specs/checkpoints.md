@@ -142,7 +142,7 @@ Investigate allowing the model to spawn subagents. The output will either be che
 
 ### craterclaw-config-override
 
-Add support for an alternate `craterclaw.json` path via a command-line argument or environment variable in both the console and API. Expose this as `--config <path>` in the `craterclaw run` and `craterclaw run --console` commands.
+Add support for an alternate `craterclaw.json` in the `craterclaw run` commands.
 Depends on: powershell-aliases
 
 ### linux-aliases
