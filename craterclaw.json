@@ -8,9 +8,6 @@
             "wslWithLocalhostIp": { "baseUrl": "http://localhost:11435" }
         }
     },
-    "mcp": {
-        "servers": {}
-    },
     "aiLogging": {
         "enabled": true,
         "path": "C:\\ollama-logs"

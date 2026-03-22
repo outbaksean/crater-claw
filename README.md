@@ -10,8 +10,6 @@ The console harness supports:
 - Provider status check (Ollama connectivity)
 - Model listing from the active endpoint
 - Interactive model execution (single prompt/response)
-- MCP server listing with transport type and enabled status
-- MCP server availability checks (HTTP GET for http servers; PATH walk for stdio servers)
 - Behavior profile selection driven by `craterclaw.json` (`no-tools`, `qbittorrent-seedbox`)
 - Preferred provider and model defaults applied from the selected profile; warnings printed when the preferred value is not available
 - Plugin function listing: after selecting a profile, the console displays the available kernel functions by name and description
@@ -26,7 +24,7 @@ The Vue frontend supports:
 - Preferred provider and model defaults applied automatically when a profile is selected; warnings shown inline when the preferred value is not available
 - Agentic task panel (shown when provider + model + profile are all selected)
 
-Configuration is layered: `craterclaw.json` (committed, no secrets) -> dotnet user secrets (dev) -> OS environment variables (deployment). Sensitive values such as MCP server credentials are stored outside the repository.
+Configuration is layered: `craterclaw.json` (committed, no secrets) -> dotnet user secrets (dev) -> OS environment variables (deployment). Sensitive values such as plugin credentials are stored outside the repository.
 
 ## Prerequisites
 
@@ -34,7 +32,6 @@ Configuration is layered: `craterclaw.json` (committed, no secrets) -> dotnet us
 - Node.js 20.x and npm 10.x (for `CraterClaw.Web`)
 - PowerShell 7.x (for `craterclaw` developer commands — install with `winget install Microsoft.PowerShell`)
 - Ollama running locally or on the LAN for provider connectivity (optional for tests)
-- `uv` on PATH for stdio MCP server availability checks (optional)
 - qBitTorrent running with WebUI enabled for qBitTorrent plugin features (optional)
 
 Check SDK version:
@@ -121,7 +118,7 @@ dotnet build .\CraterClaw.slnx
 dotnet test .\CraterClaw.slnx
 ```
 
-The test suite uses mocked HTTP and does not require a real Ollama instance or MCP server.
+The test suite uses mocked HTTP and does not require a real Ollama instance.
 
 ## Run the Vue Frontend
 
@@ -257,10 +254,6 @@ dotnet user-secrets set "aiLogging:path" "C:\ollama-logs" --project .\CraterClaw
 
 When AI logging is enabled, the console prints `AI log file: {path}` at startup alongside the main log directory.
 
-### MCP servers
-
-MCP server definitions live under `mcp.servers` in `craterclaw.json`. No servers are configured by default. Add entries here if future MCP servers are needed.
-
 ## Run the Console Harness
 
 ```powershell
@@ -287,8 +280,6 @@ The console runs in the integrated terminal so interactive prompts work normally
 3. **Model listing** - numbered list of downloaded models (if endpoint is reachable).
 4. **Model selection** - press Enter to skip execution.
 5. **Prompt** - enter a prompt and receive a response.
-6. **MCP server listing** - numbered list of configured servers with transport and enabled status.
-7. **Availability check** - select a server number or press Enter to skip.
-8. **Profile selection** - numbered list of behavior profiles; press Enter to skip.
-9. **Plugin function listing** - for profiles with permitted plugins (e.g. `qbittorrent-manager`), lists the available kernel functions by name and description. Profiles with no plugins (e.g. `no-tools`) display a "no functions available" message.
-10. **Task prompt** - enter a task and the agentic loop runs with the selected model and profile plugins. Each tool called is shown as `Tool: {name}`. The final response is shown under `Response:` followed by a tool invocation count. If the model hit the iteration limit before finishing, `(iteration limit reached)` is displayed.
+6. **Profile selection** - numbered list of behavior profiles; press Enter to skip.
+7. **Plugin function listing** - for profiles with permitted plugins (e.g. `qbittorrent-manager`), lists the available kernel functions by name and description. Profiles with no plugins (e.g. `no-tools`) display a "no functions available" message.
+8. **Task prompt** - enter a task and the agentic loop runs with the selected model and profile plugins. Each tool called is shown as `Tool: {name}`. The final response is shown under `Response:` followed by a tool invocation count. If the model hit the iteration limit before finishing, `(iteration limit reached)` is displayed.

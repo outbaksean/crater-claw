@@ -102,41 +102,19 @@ Each behavior defined in `craterclaw.json` with system prompt, preferred provide
 
 Codebase review identifying resource leaks, error handling gaps, test coverage gaps, and architectural observations. Fixed: `DefaultKernelFactory` HttpClient leak (replaced `new HttpClient()` with `IHttpClientFactory`); Vue API client error messages now include response body. Notes documented in `Specs/code-review-2026-03-22.md`. Remaining items tracked for `agentic-error-recovery` and `remove-mcp`.
 
-## Planned
-
 ### remove-mcp
-**Type: Code**
 
-Remove all MCP infrastructure from the codebase. MCP tool integration was never completed — only availability checking was built, and `McpClientProvider` is registered in DI but never called. The console session includes an MCP listing and availability check step on every run that currently adds noise with no value. Removing now keeps the codebase clean and avoids accumulating maintenance surface for unused code.
+Removed all MCP infrastructure from the codebase: 10 Core files, 3 Core.Tests files, 1 Api.Tests file. Removed MCP registrations from `ServiceCollectionExtensions.cs`, MCP endpoints from `CraterClaw.Api/Program.cs`, MCP console steps from `CraterClaw.Console/Program.cs`, MCP section from `craterclaw.json`, and MCP references from `README.md` and `current-architecture.md`. Removed the `ModelContextProtocol` NuGet package.
 
-Files to delete:
-- `CraterClaw.Core/IMcpAvailabilityService.cs`
-- `CraterClaw.Core/McpAvailabilityService.cs`
-- `CraterClaw.Core/McpAvailabilityResult.cs`
-- `CraterClaw.Core/IMcpClientProvider.cs`
-- `CraterClaw.Core/McpClientProvider.cs`
-- `CraterClaw.Core/McpOptions.cs`
-- `CraterClaw.Core/McpOptionsValidator.cs`
-- `CraterClaw.Core/McpServerDefinition.cs`
-- `CraterClaw.Core/McpServerOptions.cs`
-- `CraterClaw.Core/McpTransport.cs`
-- `CraterClaw.Core.Tests/McpAvailabilityServiceTests.cs`
-- `CraterClaw.Core.Tests/McpClientProviderTests.cs`
-- `CraterClaw.Core.Tests/McpOptionsValidatorTests.cs`
-- `CraterClaw.Api.Tests/FakeMcpAvailabilityService.cs`
+### qbittorrent-search-result-truncation
 
-Code to remove from existing files:
-- `ServiceCollectionExtensions.cs` — MCP options binding, validator, `IMcpAvailabilityService`, and `IMcpClientProvider` registrations; remove `McpOptions` and `McpServerDefinition` from DI; remove ModelContextProtocol NuGet reference
-- `CraterClaw.Api/Program.cs` — `GET /api/mcp` and `POST /api/mcp/{name}/availability` endpoints and their DTOs (`McpServerApiItem`, `McpAvailabilityApiResponse`)
-- `CraterClaw.Api.Tests/ProfilesMcpAgenticEndpointTests.cs` — MCP endpoint tests
-- `CraterClaw.Console/Program.cs` — MCP server listing, availability check step, and `IMcpAvailabilityService` / `McpOptions` service resolution
-- `craterclaw.json` — `mcp` section
-- `README.md` — MCP configuration and console flow references
-- `current-architecture.md` — MCP section
+Search result filenames longer than 120 characters now include a `"..."` suffix so the model knows the name is incomplete. Changed `fileName[..120]` to `fileName[..117] + "..."` in `QBitTorrentPlugin.SearchTorrentsAsync`.
 
-Remove the `ModelContextProtocol` NuGet package from `CraterClaw.Core.csproj`.
+### test-coverage-gaps
 
-MCP can be re-added as a proper checkpoint if a compelling use case emerges.
+Added `OllamaProviderStatusService` tests: reachable on HTTP 200, unreachable on `HttpRequestException`, unreachable on non-success status, cancellation propagated. Added `SemanticKernelAgenticExecutionService` test: exception propagates when a kernel function throws during invocation.
+
+## Planned
 
 ### behavior-secrets
 **Type: Code**
@@ -201,17 +179,6 @@ Depends on: radarr-plugin, sonarr-plugin, jellyfin-api-plugin, qbittorrent-plugi
 
 Behavior profile using qBitTorrent, FTP, and media library plugins together. The AI automates the manual workflow: check completed torrents, transfer files from the remote seedbox via FTP, place them in the correct library directory, verify they landed. For content outside the arr stack — obscure releases, manual grabs, one-off transfers.
 Depends on: media-library-tool, ftp-client-tool, qbittorrent-plugin, jellyfin-api-plugin
-
-### qbittorrent-search-result-truncation
-**Type: Code**
-
-Search result filenames longer than 120 characters are silently truncated with no indicator. Add a `"..."` suffix when truncation occurs so the model knows the name is incomplete. Small change but improves result fidelity for the LLM.
-Depends on: qbittorrent-search-tool
-
-### test-coverage-gaps
-**Type: Code**
-
-Address test coverage gaps identified in code-review-1: `SemanticKernelAgenticExecutionService` has no test for when `functionCall.InvokeAsync` throws; `OllamaProviderStatusService` has no dedicated tests (exception handling, timeout, malformed response); `QBitTorrentPlugin` has no concurrent access tests. See `Specs/code-review-2026-03-22.md` for full details.
 
 ### agentic-error-recovery
 **Type: Research / Code**

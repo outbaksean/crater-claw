@@ -21,11 +21,6 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<ProviderOptions>, ProviderOptionsValidator>();
 
-        services.AddOptions<McpOptions>()
-            .Bind(configuration.GetSection("mcp"))
-            .ValidateOnStart();
-        services.AddSingleton<IValidateOptions<McpOptions>, McpOptionsValidator>();
-
         services.AddOptions<AiLoggingOptions>()
             .Bind(configuration.GetSection("aiLogging"));
 
@@ -35,9 +30,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IProviderStatusService, OllamaProviderStatusService>();
         services.AddTransient<IModelListingService, OllamaModelListingService>();
         services.AddTransient<IModelExecutionService, OllamaModelExecutionService>();
-        services.AddTransient<IMcpAvailabilityService, McpAvailabilityService>();
         services.AddSingleton<IBehaviorProfileService, BehaviorProfileService>();
-        services.AddTransient<IMcpClientProvider, McpClientProvider>();
         services.AddSingleton<IKernelFactory, DefaultKernelFactory>();
         services.AddTransient<IAgenticExecutionService, SemanticKernelAgenticExecutionService>();
         services.AddHttpClient("qbittorrent");

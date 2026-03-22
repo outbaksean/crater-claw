@@ -35,65 +35,6 @@ public sealed class ProfilesMcpAgenticEndpointTests
         Assert.Equal("qbittorrent-manager", profiles[1].GetProperty("id").GetString());
     }
 
-    // --- MCP ---
-
-    [Fact]
-    public async Task GetMcp_ReturnsConfiguredServers()
-    {
-        using var factory = new CraterClawApiFactory(services => { },
-            new Dictionary<string, string?>
-            {
-                ["mcp:servers:searxng:label"] = "SearXNG",
-                ["mcp:servers:searxng:transport"] = "Http",
-                ["mcp:servers:searxng:baseUrl"] = "http://localhost:8888",
-                ["mcp:servers:searxng:enabled"] = "true"
-            });
-        var client = factory.CreateClient();
-
-        var response = await client.GetAsync("/api/mcp");
-
-        response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var servers = body.EnumerateArray().ToList();
-        var searxng = servers.Single(s => s.GetProperty("name").GetString() == "searxng");
-        Assert.Equal("SearXNG", searxng.GetProperty("label").GetString());
-        Assert.True(searxng.GetProperty("enabled").GetBoolean());
-    }
-
-    [Fact]
-    public async Task CheckMcpAvailability_KnownServer_ReturnsResult()
-    {
-        var fake = new FakeMcpAvailabilityService(new McpAvailabilityResult("searxng", true, null));
-        using var factory = new CraterClawApiFactory(
-            services => services.AddSingleton<IMcpAvailabilityService>(fake),
-            new Dictionary<string, string?>
-            {
-                ["mcp:servers:searxng:label"] = "SearXNG",
-                ["mcp:servers:searxng:transport"] = "Http",
-                ["mcp:servers:searxng:baseUrl"] = "http://localhost:8888",
-                ["mcp:servers:searxng:enabled"] = "true"
-            });
-        var client = factory.CreateClient();
-
-        var response = await client.PostAsync("/api/mcp/searxng/availability", null);
-
-        response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("searxng", body.GetProperty("name").GetString());
-        Assert.True(body.GetProperty("isAvailable").GetBoolean());
-    }
-
-    [Fact]
-    public async Task CheckMcpAvailability_UnknownServer_Returns404()
-    {
-        using var factory = new CraterClawApiFactory();
-        var client = factory.CreateClient();
-
-        var response = await client.PostAsync("/api/mcp/unknown/availability", null);
-
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
     // --- Agentic ---
 
     [Fact]

@@ -290,7 +290,7 @@ public sealed class QBitTorrentPlugin(
             var projected = resultsArray.Select(r =>
             {
                 var fileName = r?["fileName"]?.ToString() ?? string.Empty;
-                if (fileName.Length > 120) fileName = fileName[..120];
+                if (fileName.Length > 120) fileName = fileName[..117] + "...";
 
                 var fileUrl = r?["fileUrl"]?.ToString() ?? string.Empty;
                 if (fileUrl.StartsWith("magnet:", StringComparison.OrdinalIgnoreCase))
