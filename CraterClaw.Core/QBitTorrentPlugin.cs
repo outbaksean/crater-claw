@@ -13,6 +13,8 @@ public sealed class QBitTorrentPlugin(
     ILogger<QBitTorrentPlugin> logger)
 {
     private readonly QBitTorrentOptions _options = options;
+    // Not thread-safe. Safe in current usage because the agentic loop invokes tools
+    // sequentially. If concurrent tool dispatch is ever added, protect with a SemaphoreSlim.
     private string? _sid;
 
     private bool IsConfigured => !string.IsNullOrWhiteSpace(_options.BaseUrl);

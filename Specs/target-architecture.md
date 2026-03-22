@@ -25,7 +25,16 @@ A Vue TypeScript application consuming the C# API, mirroring the console harness
 Behavior profiles are a fixed catalog of curated combinations of model guidance and permitted tool sets. Users select from predefined profiles. User-defined profile composition is permanently out of scope.
 
 ## Tool Integrations
-Tools are exposed as Semantic Kernel kernel plugins registered against the agentic execution loop. Initial integration: qBitTorrent. Future candidates include SearXNG, media management, Obsidian, and writing assistant workflows.
+Tools are exposed as Semantic Kernel kernel plugins registered against the agentic execution loop. Initial integration: qBitTorrent. Planned integrations: Radarr, Sonarr, Jellyfin, FTP client, local media library filesystem.
+
+### Media Management Strategy
+Two complementary behaviors handle media management at different levels:
+
+- **media-supervised**: Uses Radarr, Sonarr, Jellyfin, and qBitTorrent plugins. The arr stack (Radarr/Sonarr) handles automated acquisition and library organization for monitored titles. The AI provides a natural language interface: checking queue status, triggering searches, identifying missing or stalled items. No file operations — the arr stack owns that.
+
+- **media-manual**: Uses qBitTorrent, FTP, Jellyfin, and media library filesystem plugins. Automates the manual workflow for content outside the arr stack: check completed torrents on the remote seedbox, transfer via FTP to the local media library, place in the correct directory, verify it appeared in Jellyfin. For obscure releases, manual grabs, and one-off transfers.
+
+The media library is hosted on a minipc (Proxmox LXC) with an external hard drive. Jellyfin serves as the media server (DLNA, web UI, REST API). The library is accessible to CraterClaw via SMB UNC path for file operations and via the Jellyfin API for library queries and scan triggers.
 
 ## MCP Integration
 MCP servers are external dependencies. CraterClaw loads their definitions from configuration and can check availability on demand. It does not deploy, update, or host MCP servers.

@@ -90,62 +90,169 @@ Depends on: vue-lint
 
 Reconciled `.editorconfig` (LF everywhere, 2-space for web files) with Prettier. Added `.vscode/settings.json` with format on save and per-language formatter assignments. `npm run lint` and `dotnet format` both produce zero changes.
 
-## Planned
-
 ### behavior-refactor
 
-Each behavior should be a preconfigured list of model, system prompt, available plugins/tools with a name. All behavior details should be separate the agentic core services. craterclaw.json should define behaviors.
+Each behavior defined in `craterclaw.json` with system prompt, preferred provider/model, and a list of plugin bindings with per-tool filtering and per-binding connection config. Config-driven `IBehaviorProfileService`. `IPluginRegistry` resolves bindings to pre-filtered SK `KernelPlugin` instances. `AgenticRequest` carries system prompt and resolved plugins. Two qBitTorrent behaviors (home, seedbox) with separate credentials. Vue frontend applies preferred provider/model defaults on profile selection and shows warnings when preferred values are unavailable.
+
+### craterclaw-config-override
+
+`craterclaw run` accepts `-Config <path>` to pass an alternate `craterclaw.json`. Both console and API accept `--config <path>` CLI arg and `CRATERCLAW_CONFIG` env var (for test injection). Path resolved to absolute in PowerShell before forwarding.
+
+### code-review-1
+
+Codebase review identifying resource leaks, error handling gaps, test coverage gaps, and architectural observations. Fixed: `DefaultKernelFactory` HttpClient leak (replaced `new HttpClient()` with `IHttpClientFactory`); Vue API client error messages now include response body. Notes documented in `Specs/code-review-2026-03-22.md`. Remaining items tracked for `agentic-error-recovery` and `remove-mcp`.
+
+## Planned
+
+### remove-mcp
+**Type: Code**
+
+Remove all MCP infrastructure from the codebase. MCP tool integration was never completed — only availability checking was built, and `McpClientProvider` is registered in DI but never called. The console session includes an MCP listing and availability check step on every run that currently adds noise with no value. Removing now keeps the codebase clean and avoids accumulating maintenance surface for unused code.
+
+Files to delete:
+- `CraterClaw.Core/IMcpAvailabilityService.cs`
+- `CraterClaw.Core/McpAvailabilityService.cs`
+- `CraterClaw.Core/McpAvailabilityResult.cs`
+- `CraterClaw.Core/IMcpClientProvider.cs`
+- `CraterClaw.Core/McpClientProvider.cs`
+- `CraterClaw.Core/McpOptions.cs`
+- `CraterClaw.Core/McpOptionsValidator.cs`
+- `CraterClaw.Core/McpServerDefinition.cs`
+- `CraterClaw.Core/McpServerOptions.cs`
+- `CraterClaw.Core/McpTransport.cs`
+- `CraterClaw.Core.Tests/McpAvailabilityServiceTests.cs`
+- `CraterClaw.Core.Tests/McpClientProviderTests.cs`
+- `CraterClaw.Core.Tests/McpOptionsValidatorTests.cs`
+- `CraterClaw.Api.Tests/FakeMcpAvailabilityService.cs`
+
+Code to remove from existing files:
+- `ServiceCollectionExtensions.cs` — MCP options binding, validator, `IMcpAvailabilityService`, and `IMcpClientProvider` registrations; remove `McpOptions` and `McpServerDefinition` from DI; remove ModelContextProtocol NuGet reference
+- `CraterClaw.Api/Program.cs` — `GET /api/mcp` and `POST /api/mcp/{name}/availability` endpoints and their DTOs (`McpServerApiItem`, `McpAvailabilityApiResponse`)
+- `CraterClaw.Api.Tests/ProfilesMcpAgenticEndpointTests.cs` — MCP endpoint tests
+- `CraterClaw.Console/Program.cs` — MCP server listing, availability check step, and `IMcpAvailabilityService` / `McpOptions` service resolution
+- `craterclaw.json` — `mcp` section
+- `README.md` — MCP configuration and console flow references
+- `current-architecture.md` — MCP section
+
+Remove the `ModelContextProtocol` NuGet package from `CraterClaw.Core.csproj`.
+
+MCP can be re-added as a proper checkpoint if a compelling use case emerges.
 
 ### behavior-secrets
+**Type: Code**
 
 Audit behavior definitions for sensitive data — system prompts may reference personal details, internal instructions, or other content that should not be committed. Determine whether behavior definitions (or parts of them) should be stored in user secrets or environment variables rather than craterclaw.json. Implement whatever secret handling approach is appropriate and document the pattern for future behaviors.
 
 ### ollama-lan
+**Type: Infrastructure**
 
-Configure ollama to be avaiable on the lan.
+Make Ollama accessible on the LAN. Currently Ollama only runs on the host machine and is not reachable from other devices on the network. Needs investigation — the right approach depends on the host OS, network config, and whether Ollama should be exposed directly or proxied.
 
 ### media-server
+**Type: Infrastructure**
 
-Ensure the media management server is available on the lan and ready for use with CraterClaw.
+Set up Jellyfin in a Proxmox LXC on the minipc, with the external hard drive as the media library storage. Jellyfin is free, fully self-hosted, and has a REST API for future CraterClaw integration. DLNA is built in (replaces existing DLNA setup). SMB share on the LXC provides direct file access for CraterClaw's media library plugin.
+
+Infrastructure: minipc running Proxmox, external hard drive attached to the minipc and bind-mounted into the LXC. LXC provisioned manually for now — Terraform + cloud-init is a later checkpoint.
+
+See `Specs/media-server-spec.md` for setup details.
 
 ### media-library-config
+**Type: Code**
 
-Add a `mediaLibrary` configuration section to `craterclaw.json` defining the network root path and named category directories (e.g. movies, tv). Add FTP server credentials (host, port, username, password) under a separate `ftp` section. Bind both to new options types with validation. No tools yet — config and options types only.
+Add a `mediaLibrary` configuration section to `craterclaw.json` defining the UNC path to the media library root and a named map of category directories (initially just `movies`). Bind to a new options type with validation. No tools yet — config and options types only. FTP config is a separate checkpoint.
+Depends on: media-server
 
 ### media-library-tool
+**Type: Code**
 
-SK kernel plugin that operates on the configured local media library. Functions: list files in a category directory, check whether a title already exists anywhere in the library, move a file from a staging location into the correct category directory. Depends on: media-library-config.
+SK kernel plugin that operates on the configured local media library via the UNC path. Functions: list files in a category directory, check whether a title already exists anywhere in the library, move a downloaded file into the correct category directory. Files are placed flat inside the category directory. Depends on: media-library-config.
 
 ### ftp-client-tool
+**Type: Code**
 
 SK kernel plugin for transferring files from a remote FTP server to the local media library. Functions: list files in a remote directory, download a file from a remote path to a local category directory. Uses the configured FTP credentials. Depends on: media-library-config.
 
+### radarr-sonarr-setup
+**Type: Infrastructure**
+
+Set up Radarr and Sonarr alongside the existing qBitTorrent setup. Both pointed at qBitTorrent as the download client and at the media library directories as their root folders. Radarr handles movies, Sonarr handles TV. This is an infrastructure checkpoint — no CraterClaw code. The arr stack handles the automated 80% case (monitored titles); CraterClaw handles the manual 20% case via the media-manual behavior.
+
+### radarr-plugin
+**Type: Code**
+
+SK kernel plugin for the Radarr REST API. Functions: list movies in the library, list the download queue, search for a movie by title, add a movie to the wanted list, get the status of a movie (missing, queued, downloaded). Requires Radarr base URL and API key in config.
+Depends on: radarr-sonarr-setup
+
+### sonarr-plugin
+**Type: Code**
+
+SK kernel plugin for the Sonarr REST API. Functions: list series in the library, list the download queue, search for a series by title, add a series to the wanted list, get episode status. Requires Sonarr base URL and API key in config.
+Depends on: radarr-sonarr-setup
+
+### media-supervised-behavior
+**Type: Code**
+
+Behavior profile using Radarr, Sonarr, Jellyfin, and qBitTorrent plugins together. The AI provides a natural language interface to the arr stack: what's missing, what's downloading, what stalled, trigger searches, check queue health. No file operations — the arr stack handles everything mechanical.
+Depends on: radarr-plugin, sonarr-plugin, jellyfin-api-plugin, qbittorrent-plugin
+
+### media-manual-behavior
+**Type: Code**
+
+Behavior profile using qBitTorrent, FTP, and media library plugins together. The AI automates the manual workflow: check completed torrents, transfer files from the remote seedbox via FTP, place them in the correct library directory, verify they landed. For content outside the arr stack — obscure releases, manual grabs, one-off transfers.
+Depends on: media-library-tool, ftp-client-tool, qbittorrent-plugin, jellyfin-api-plugin
+
+### qbittorrent-search-result-truncation
+**Type: Code**
+
+Search result filenames longer than 120 characters are silently truncated with no indicator. Add a `"..."` suffix when truncation occurs so the model knows the name is incomplete. Small change but improves result fidelity for the LLM.
+Depends on: qbittorrent-search-tool
+
+### test-coverage-gaps
+**Type: Code**
+
+Address test coverage gaps identified in code-review-1: `SemanticKernelAgenticExecutionService` has no test for when `functionCall.InvokeAsync` throws; `OllamaProviderStatusService` has no dedicated tests (exception handling, timeout, malformed response); `QBitTorrentPlugin` has no concurrent access tests. See `Specs/code-review-2026-03-22.md` for full details.
+
 ### agentic-error-recovery
+**Type: Research / Code**
 
 Investigate and address error handling and recovery patterns across the agentic loop and plugins. To be scoped when the media plugins exist and real failure modes are known.
 
-### media-management-tool
+### jellyfin-api-plugin
+**Type: Code**
 
-Orchestration behavior tying the media plugins together: download from FTP to the correct library directory, verify the file landed in the library, and delete the corresponding torrent from qBitTorrent if the title is already present in the library. Depends on: media-library-tool, ftp-client-tool, qbittorrent-plugin.
+SK kernel plugin for the Jellyfin REST API. Functions: trigger a library scan for a specific library, check whether a title exists in the library by name. Useful for the AI to verify a file was picked up after being moved into the library. Requires Jellyfin base URL and API key in config.
+Depends on: media-server, media-library-config
+
+### lxc-terraform
+**Type: Infrastructure**
+
+Terraform module and cloud-init config to provision the Jellyfin LXC on Proxmox, replacing the manual setup from `media-server`. Includes: container resource definitions, bind mount for the external drive, network config, and cloud-init for Jellyfin + Samba installation.
+Depends on: media-server
 
 ### thinking-mode-ollama
+**Type: Code**
 
 Enable thinking mode by using OllamaPromptExecutionSettings instead of PromptExecutionSettings in SemanticKernelAgenticExecutionService and include "think" true in AdditionalProperties. Thinking should be toggleable by the user.
 
+### web-agentic-streaming
+**Type: Code**
+
+Add streaming support to the agentic execution path in the API and web frontend. Currently streaming only works in the console harness via `StreamChunk`. The API returns the full response only after completion, leaving the web UI blank for the duration of long tasks. Requires a streaming endpoint (SSE or chunked transfer) and a Vue composable update to consume it.
+Depends on: vue-frontend
+
 ### web-ux-refactor-2
+**Type: Code**
 
 Refactor the web ux with better placement of providers, models, behavior, chat boxes
 
 ### investigate-child-agents
+**Type: Research**
 
 Investigate allowing the model to spawn subagents. The output will either be checkpoints or a notes file
 
-### craterclaw-config-override
-
-Add support for an alternate `craterclaw.json` in the `craterclaw run` commands.
-Depends on: powershell-aliases
-
 ### linux-aliases
+**Type: Code**
 
 Bash/zsh equivalent of the powershell-aliases module. Shell function file installed via install.sh to ~/.local/share/craterclaw/, sourced from .bashrc/.zshrc. Same craterclaw subcommand interface as the PowerShell module.
 Depends on: powershell-aliases
