@@ -11,13 +11,36 @@
     "mcp": {
         "servers": {}
     },
-    "qbittorrent": {
-        "baseUrl": "",
-        "username": "",
-        "password": ""
-    },
     "aiLogging": {
         "enabled": true,
         "path": "C:\\ollama-logs"
+    },
+    "behaviors": {
+        "no-tools": {
+            "name": "No Tools",
+            "description": "General-purpose conversation with no external tools.",
+            "systemPrompt": "You are a helpful assistant.",
+            "preferredProviderName": null,
+            "preferredModelName": null,
+            "plugins": []
+        },
+        "qbittorrent-seedbox": {
+            "name": "qBitTorrent (Seedbox)",
+            "description": "Managing downloads on the remote seedbox qBitTorrent client.",
+            "systemPrompt": "You are a torrent management assistant. Use the available tools to help manage downloads please.",
+            "preferredProviderName": null,
+            "preferredModelName": null,
+            "plugins": [
+                {
+                    "name": "qbittorrent",
+                    "tools": [],
+                    "config": {
+                        "baseUrl": "http://seedbox.example.com:8080",
+                        "username": "",
+                        "password": ""
+                    }
+                }
+            ]
+        }
     }
 }

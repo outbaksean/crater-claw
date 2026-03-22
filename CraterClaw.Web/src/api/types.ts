@@ -32,12 +32,19 @@ export interface ExecutionResponse {
   finishReason: string
 }
 
+export interface PluginBinding {
+  name: string
+  tools: string[]
+}
+
 export interface BehaviorProfile {
   id: string
   name: string
   description: string
-  recommendedModelTags: string[]
-  allowedMcpServerNames: string[]
+  systemPrompt: string
+  preferredProviderName: string | null
+  preferredModelName: string | null
+  plugins: PluginBinding[]
 }
 
 export interface McpServer {

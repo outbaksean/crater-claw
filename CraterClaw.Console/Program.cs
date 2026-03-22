@@ -64,7 +64,7 @@ var modelListingService = provider.GetRequiredService<IModelListingService>();
 var executionService = provider.GetRequiredService<IModelExecutionService>();
 var mcpAvailabilityService = provider.GetRequiredService<IMcpAvailabilityService>();
 var behaviorProfileService = provider.GetRequiredService<IBehaviorProfileService>();
-var qBitTorrentPlugin = provider.GetRequiredService<QBitTorrentPlugin>();
+var pluginRegistry = provider.GetRequiredService<IPluginRegistry>();
 var agenticExecutionService = provider.GetRequiredService<IAgenticExecutionService>();
 
 try
@@ -125,12 +125,12 @@ try
     var status = await statusService.CheckStatusAsync(endpoint, CancellationToken.None);
 
     string? selectedModelName = null;
+    IReadOnlyList<ModelDescriptor> models = [];
 
     if (status.IsReachable)
     {
         Console.WriteLine($"Reachable: {endpoint.BaseUrl}");
 
-        IReadOnlyList<ModelDescriptor> models = [];
         try
         {
             models = await modelListingService.ListModelsAsync(endpoint, CancellationToken.None);
@@ -277,21 +277,54 @@ try
         else
         {
             var selectedProfile = profiles[profileIndex - 1];
-            var selectedProfileId = selectedProfile.Id;
 
-            var permitted = selectedProfile.AllowedMcpServerNames;
-            if (permitted.Count == 0)
+            if (selectedProfile.PreferredProviderName is not null)
+            {
+                var preferredEndpoint = endpointList.FirstOrDefault(e =>
+                    string.Equals(e.Name, selectedProfile.PreferredProviderName, StringComparison.OrdinalIgnoreCase));
+                if (preferredEndpoint is not null)
+                {
+                    if (!string.Equals(preferredEndpoint.Name, endpoint.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        endpoint = preferredEndpoint;
+                        Console.WriteLine($"Behavior prefers provider: {endpoint.Name}");
+                        try { models = await modelListingService.ListModelsAsync(endpoint, CancellationToken.None); }
+                        catch (Exception ex) { Console.WriteLine($"Model listing failed after provider switch: {ex.Message}"); models = []; }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Warning: behavior prefers provider '{selectedProfile.PreferredProviderName}' which is not configured");
+                }
+            }
+
+            if (selectedProfile.PreferredModelName is not null)
+            {
+                var preferredModel = models.FirstOrDefault(m =>
+                    string.Equals(m.Name, selectedProfile.PreferredModelName, StringComparison.OrdinalIgnoreCase));
+                if (preferredModel is not null)
+                {
+                    selectedModelName = preferredModel.Name;
+                    Console.WriteLine($"Behavior prefers model: {selectedModelName}");
+                }
+                else
+                {
+                    Console.WriteLine($"Warning: behavior prefers model '{selectedProfile.PreferredModelName}' which is not available at this provider");
+                }
+            }
+
+            var kernelPlugins = pluginRegistry.Resolve(selectedProfile.Plugins);
+            if (kernelPlugins.Count == 0)
             {
                 Console.WriteLine("No plugin functions available for this profile.");
             }
             else
             {
-                var functions = QBitTorrentPlugin.GetFunctionDescriptions();
-                Console.WriteLine($"Available plugin functions ({functions.Count}):");
-                for (var i = 0; i < functions.Count; i++)
-                {
-                    Console.WriteLine($"{i + 1}. {functions[i].Name} - {functions[i].Description}");
-                }
+                var totalFunctions = kernelPlugins.Sum(p => p.Count());
+                Console.WriteLine($"Available plugin functions ({totalFunctions}):");
+                foreach (var kp in kernelPlugins)
+                    foreach (var f in kp)
+                        Console.WriteLine($"- {f.Name}: {f.Description}");
             }
 
             if (!string.IsNullOrWhiteSpace(selectedModelName))
@@ -303,16 +336,13 @@ try
                 {
                     try
                     {
-                        IReadOnlyList<object> plugins = permitted.Count > 0
-                            ? [qBitTorrentPlugin]
-                            : [];
-
                         var agenticRequest = new AgenticRequest(
                             selectedModelName,
                             taskPrompt.Trim(),
-                            plugins,
+                            kernelPlugins,
                             MaxIterations: 10,
-                            StreamChunk: Console.Write);
+                            StreamChunk: Console.Write,
+                            SystemPrompt: selectedProfile.SystemPrompt);
 
                         Console.WriteLine("Response:");
                         var agenticResponse = await agenticExecutionService.ExecuteAsync(

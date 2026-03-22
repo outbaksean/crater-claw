@@ -26,8 +26,8 @@
 ### Configuration Types
 - `ProviderOptions` — named collection of endpoints (`BaseUrl`); `Active` names the default.
 - `McpOptions` — named collection of MCP server definitions (transport, URL or command, enabled flag).
-- `QBitTorrentOptions` — `BaseUrl`, `Username`, `Password`; bound to the `qbittorrent` config section.
 - `AiLoggingOptions` — `Enabled` (bool, default false), `Path` (string). Accepts a directory path or a file prefix. Bound to the `aiLogging` config section. No validator.
+- `BehaviorEntry` / `PluginEntry` — POCO types bound to `behaviors` section of config. `BehaviorEntry` has `Name`, `Description`, `SystemPrompt`, `PreferredProviderName`, `PreferredModelName`, and a `List<PluginEntry>`. `PluginEntry` has `Name`, `Tools`, and `Config` (dictionary of string key/value for per-binding plugin connection settings).
 
 ## CraterClaw.Core
 
@@ -42,12 +42,17 @@
 - `IMcpClientProvider` / `McpClientProvider` — registered for future MCP tool integration.
 
 ### Behavior Profiles
-- `IBehaviorProfileService` — returns the fixed profile catalog.
-- Fixed profiles: `no-tools` (no tools permitted), `qbittorrent-manager` (qBitTorrent plugin permitted).
-- Each profile has an id, name, description, and a set of permitted MCP server names.
+- `IBehaviorProfileService` / `BehaviorProfileService` — reads behavior definitions from `IOptions<Dictionary<string, BehaviorEntry>>` (bound to the `behaviors` config section). Maps each entry to a `BehaviorProfile` record.
+- `BehaviorProfile` — `Id`, `Name`, `Description`, `SystemPrompt`, `PreferredProviderName` (nullable), `PreferredModelName` (nullable), `Plugins` (list of `PluginBinding`).
+- `PluginBinding` — `Name`, `Tools` (allowlist; empty means all), `Config` (per-binding connection settings dictionary).
+- Default profiles in `craterclaw.json`: `no-tools` (no plugins), `qbittorrent-home` (localhost qBitTorrent), `qbittorrent-seedbox` (remote qBitTorrent).
+
+### Plugin Registry
+- `IPluginRegistry` / `DefaultPluginRegistry` — resolves a list of `PluginBinding` values into `IReadOnlyList<KernelPlugin>`. Holds a dictionary of named factory delegates `Func<IReadOnlyDictionary<string, string>, object>`. For each binding: invokes the factory with `binding.Config`, creates a `KernelPlugin` via `KernelPluginFactory.CreateFromObject`, then filters to the `Tools` allowlist using `KernelPluginFactory.CreateFromFunctions` if the list is non-empty. Unknown plugin names are logged and skipped. Unknown tool names are logged and skipped.
+- Registered factories: `"qbittorrent"` — creates a `QBitTorrentPlugin` from config keys `baseUrl`, `username`, `password`.
 
 ### Plugins
-- `QBitTorrentPlugin` — Semantic Kernel kernel plugin. Authenticates with the qBitTorrent WebUI using cookie-based login (`/api/v2/auth/login`), caches the SID cookie, and re-authenticates on 403 responses. Kernel functions:
+- `QBitTorrentPlugin` — Semantic Kernel kernel plugin. Takes `QBitTorrentOptions` directly (not IOptions). Authenticates with the qBitTorrent WebUI using cookie-based login (`/api/v2/auth/login`), caches the SID cookie, and re-authenticates on 403 responses. Kernel functions:
   - `ListTorrents` — JSON array of all torrents (name, state, added_on).
   - `AddTorrentByUrl` — adds a torrent from a magnet link or HTTP URL.
   - `PauseTorrent` — pauses a torrent by hash.
@@ -74,7 +79,7 @@ ASP.NET Core minimal API. Loads `craterclaw.json` (optional, falls back to in-me
 - `GET /api/providers/{name}/status` — calls `IProviderStatusService.CheckStatusAsync`, returns `{ isReachable, errorMessage }`. 404 if name not found.
 - `GET /api/providers/{name}/models` — calls `IModelListingService.ListModelsAsync`, returns `[{ name, sizeBytes, modifiedAt }]`. 404 if name not found.
 - `POST /api/providers/{name}/execute` — accepts `{ modelName, messages: [{role, content}], temperature?, maxTokens? }`, calls `IModelExecutionService.ExecuteAsync`, returns `{ content, modelName, finishReason }`. 404 if name not found.
-- `GET /api/profiles` — returns all behavior profiles from `IBehaviorProfileService`.
+- `GET /api/profiles` — returns all behavior profiles from `IBehaviorProfileService`. Response shape: `{ id, name, description, systemPrompt, preferredProviderName, preferredModelName, plugins: [{ name, tools }] }`. Plugin `config` is excluded from the response (credentials not exposed).
 - `GET /api/mcp` — returns configured MCP server names, labels, and enabled flags from `McpOptions`.
 - `POST /api/mcp/{name}/availability` — calls `IMcpAvailabilityService.CheckAvailabilityAsync`, returns `{ name, isAvailable, errorMessage }`. 404 if name not found.
 - `POST /api/providers/{name}/agentic` — accepts `{ modelName, prompt, profileId, maxIterations? }`, resolves profile via `IBehaviorProfileService`, builds plugin list (same logic as console), calls `IAgenticExecutionService.ExecuteAsync` with `StreamChunk: null`, returns `{ content, finishReason, toolsInvoked }`. 404 if endpoint not found, 400 if profile not found.
@@ -99,9 +104,14 @@ Vue 3 TypeScript frontend (Vite, Vitest). Consumes `CraterClaw.Api` over HTTP. A
 - `useExecution` composable: manages conversation message history, calls `postExecute`, appends user and assistant turns.
 - `InteractiveChat` component: input form, conversation history display, loading/error state.
 - `useProfiles` composable: fetches profile list, tracks selected profile.
+- `useBehaviorDefaults` composable: takes `providers` and `models` refs and `selectProvider`/`selectModel` callbacks. `applyProfileDefaults(profile)` applies preferred provider/model defaults from the profile, calling the appropriate select function if the preferred value is found, or pushing a warning string to `behaviorWarnings` if not. Warnings are cleared on each call.
 - `ProfileSelector` component: numbered list of profiles with name and description.
 - `AgenticPanel` component: task prompt input, displays response content, finish reason, and tools invoked list.
-- `App.vue`: provider list, status indicator, model list, chat panel, profile selector, agentic panel (shown when provider + model + profile are all selected).
+- `App.vue`: provider list, status indicator, model list, chat panel, profile selector (with inline behavior warnings), agentic panel (shown when provider + model + profile are all selected). When a profile is selected, `applyProfileDefaults` is called to apply preferred provider/model and surface warnings.
+
+### API Types (`src/api/types.ts`)
+- `BehaviorProfile` — `id`, `name`, `description`, `systemPrompt`, `preferredProviderName` (null or string), `preferredModelName` (null or string), `plugins` (array of `PluginBinding`).
+- `PluginBinding` — `name`, `tools` (string array).
 
 ESLint is configured via `eslint.config.mjs` using flat config format with `eslint-plugin-vue` (flat/essential), `@vue/eslint-config-typescript`, and `@vue/eslint-config-prettier`. Vitest globals (`describe`, `it`, `test`, `expect`, `vi`, etc.) are registered for `*.spec.ts` and `*.test.ts` files. Prettier is configured with `endOfLine: lf` for cross-platform consistency. `npm run lint` and `npm run lint:fix` are available.
 
@@ -115,5 +125,6 @@ MCP server UI is not implemented in the frontend. The API endpoints exist but ar
 5. If model selected: prompt for an interactive message; display the response.
 6. Display numbered list of configured MCP servers; prompt to check availability of one.
 7. Display numbered list of behavior profiles; prompt for selection.
-8. If profile selected and has allowed tools: list available plugin functions by name and description.
-9. If model selected: prompt for a task prompt; run agentic execution with streaming output; display tools invoked and finish reason.
+8. If profile selected: apply preferred provider and model defaults (switch endpoint/re-fetch models if provider changed; switch selected model if model found; print warning if not found).
+9. If profile selected and has plugins: list available kernel functions by name and description.
+10. If model selected: prompt for a task prompt; run agentic execution with streaming output; display tools invoked and finish reason.

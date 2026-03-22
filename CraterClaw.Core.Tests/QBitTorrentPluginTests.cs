@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace CraterClaw.Core.Tests;
 
@@ -14,12 +13,12 @@ public sealed class QBitTorrentPluginTests
         Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler)
     {
         var client = new HttpClient(new DelegatingTestHandler(handler));
-        var options = Options.Create(new QBitTorrentOptions
+        var options = new QBitTorrentOptions
         {
             BaseUrl = BaseUrl,
             Username = "admin",
             Password = "password"
-        });
+        };
         return new QBitTorrentPlugin(client, options, NullLogger<QBitTorrentPlugin>.Instance);
     }
 
@@ -190,7 +189,7 @@ public sealed class QBitTorrentPluginTests
     public async Task SearchTorrentsAsync_ReturnsError_WhenNotConfigured()
     {
         var client = new HttpClient(new DelegatingTestHandler((_, _) => throw new InvalidOperationException("should not be called")));
-        var options = Options.Create(new QBitTorrentOptions { BaseUrl = string.Empty });
+        var options = new QBitTorrentOptions { BaseUrl = string.Empty };
         var plugin = new QBitTorrentPlugin(client, options, NullLogger<QBitTorrentPlugin>.Instance);
 
         var result = await plugin.SearchTorrentsAsync("ubuntu");
