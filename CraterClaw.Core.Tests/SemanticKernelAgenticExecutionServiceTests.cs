@@ -132,6 +132,33 @@ public sealed class SemanticKernelAgenticExecutionServiceTests
         Assert.DoesNotContain(captured, m => m.Role == AuthorRole.System);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_PropagatesException_WhenKernelFunctionThrowsDuringInvocation()
+    {
+        var functionCallItems = new ChatMessageContentItemCollection
+        {
+            new FunctionCallContent("ThrowingFunction", "TestPlugin", "call-1")
+        };
+        var fake = new FakeChatCompletionService(
+            new ChatMessageContent(AuthorRole.Assistant, functionCallItems));
+
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton<IChatCompletionService>(fake);
+        var kernel = builder.Build();
+        Func<string> throwingMethod = () => throw new InvalidOperationException("Function failed");
+        kernel.Plugins.AddFromFunctions("TestPlugin",
+            [KernelFunctionFactory.CreateFromMethod(throwingMethod, "ThrowingFunction")]);
+
+        var service = new SemanticKernelAgenticExecutionService(
+            new FakeKernelFactory(kernel),
+            NullLogger<SemanticKernelAgenticExecutionService>.Instance,
+            NullLoggerFactory.Instance);
+
+        var request = new AgenticRequest("test-model", "Do something.", [], MaxIterations: 10);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.ExecuteAsync(TestEndpoint, request, CancellationToken.None));
+    }
+
     private static SemanticKernelAgenticExecutionService BuildService(IChatCompletionService chatService)
     {
         var builder = Kernel.CreateBuilder();

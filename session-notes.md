@@ -56,12 +56,12 @@ now trims the response to three fields per torrent: `name`, `state`, `added_on`.
 
 ### Recommended models for tool-use agentic tasks
 
-| Model | VRAM (Q4) | Notes |
-|---|---|---|
-| `qwen2.5:14b` | ~8GB | Best fit; strong tool use and instruction following |
-| `qwen2.5:14b-instruct-q5_k_m` | ~10GB | Higher quality, still fits |
-| `llama3.1:8b` | ~5GB | Fast, decent tool use, plenty of headroom |
-| `mistral-nemo:12b` | ~7GB | Good all-rounder |
+| Model                         | VRAM (Q4) | Notes                                               |
+| ----------------------------- | --------- | --------------------------------------------------- |
+| `qwen2.5:14b`                 | ~8GB      | Best fit; strong tool use and instruction following |
+| `qwen2.5:14b-instruct-q5_k_m` | ~10GB     | Higher quality, still fits                          |
+| `llama3.1:8b`                 | ~5GB      | Fast, decent tool use, plenty of headroom           |
+| `mistral-nemo:12b`            | ~7GB      | Good all-rounder                                    |
 
 Avoid anything above ~14B at Q4 — it will either not fit or spill to CPU and become very slow.
 

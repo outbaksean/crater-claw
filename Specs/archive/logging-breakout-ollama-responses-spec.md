@@ -1,12 +1,15 @@
 # Logging Breakout — Ollama Responses Spec
 
 ## Name
+
 - Logging Breakout — Ollama Responses
 
 ## Checkpoint
+
 - logging-breakout-ollama-responses
 
 ## Purpose
+
 Separate AI traffic detail (full requests and responses to/from Ollama) from the main application log into a dedicated file. The AI log is toggled via config and uses a distinct Serilog sink. The main log retains only high-level lifecycle events. Both the console and API use the same logging setup.
 
 ## Design
@@ -14,17 +17,20 @@ Separate AI traffic detail (full requests and responses to/from Ollama) from the
 ### Log Categories
 
 All AI traffic is logged under the fixed category `"CraterClaw.AiTraffic"` using a named logger created via `ILoggerFactory`. Serilog routes this category:
+
 - Always excluded from the main log sink.
 - Written to a dedicated rolling file only when AI logging is enabled.
 
 ### What Goes Where
 
 **Main log (unchanged structure, kept):**
+
 - Model execution started / finished with finish reason
 - Agentic iteration count, tool invocations, finish reason
 - Warnings and errors
 
 **AI log (new, full content, no truncation):**
+
 - `OllamaModelExecutionService`: full request JSON sent to `/api/chat`; full response message content received
 - `SemanticKernelAgenticExecutionService`: full message history sent to the LLM each iteration (role + content, no truncation); full received message content and function call details
 
@@ -48,6 +54,7 @@ All AI traffic is logged under the fixed category `"CraterClaw.AiTraffic"` using
 ### Contract
 
 **New type: `AiLoggingOptions`** in `CraterClaw.Core`:
+
 ```csharp
 public sealed class AiLoggingOptions
 {
@@ -55,11 +62,13 @@ public sealed class AiLoggingOptions
     public string Path { get; init; } = string.Empty;
 }
 ```
+
 Bound to the `aiLogging` configuration section. No validator needed.
 
 **`OllamaModelExecutionService`** — add `ILoggerFactory loggerFactory` as a constructor parameter. Create `private readonly ILogger _aiLogger = loggerFactory.CreateLogger("CraterClaw.AiTraffic")`.
 
 Current AI-traffic log calls to move from `logger` to `_aiLogger`:
+
 - The existing `logger.LogDebug("Request body: {RequestJson}", json)` line — move to `_aiLogger.LogDebug`.
 - Add a new `_aiLogger.LogDebug("Response content: {Content}", response.Message?.Content)` after the response is deserialized successfully.
 
@@ -68,6 +77,7 @@ Current AI-traffic log calls to move from `logger` to `_aiLogger`:
 Current log calls to move from `logger` to `_aiLogger` (removing the 200-char truncation):
 
 Before each LLM call (non-streaming path and streaming path), the per-message loop:
+
 ```csharp
 // Before: used 'preview' truncated to 200 chars — replace with full content
 _aiLogger.LogDebug("  [{Role}] content={Content} calls=[{Calls}] results=[{Results}]",
@@ -75,6 +85,7 @@ _aiLogger.LogDebug("  [{Role}] content={Content} calls=[{Calls}] results=[{Resul
 ```
 
 After the non-streaming LLM call, the received-message loop:
+
 ```csharp
 // Before: used 'preview' truncated to 200 chars — replace with full content
 _aiLogger.LogDebug("  [{Role}] content={Content} calls=[{Calls}]",
@@ -84,17 +95,21 @@ _aiLogger.LogDebug("  [{Role}] content={Content} calls=[{Calls}]",
 The iteration-count `LogDebug` lines (`"Iteration {n}: sending {count} messages"`, `"received {count} messages"`, `"stream complete, calls=[...]"`) move to `_aiLogger` unchanged.
 
 The following stay on the main `logger` (no change):
+
 - `LogInformation("Tool invoked: {Tool}", tool)`
 - `LogInformation("Agentic task finished: {FinishReason}", finishReason)`
 
 **`ServiceCollectionExtensions`** — register `AiLoggingOptions`:
+
 ```csharp
 services.AddOptions<AiLoggingOptions>()
     .Bind(configuration.GetSection("aiLogging"));
 ```
+
 No validator.
 
 **`craterclaw.json`** — add section:
+
 ```json
 "aiLogging": {
     "enabled": false,
@@ -107,6 +122,7 @@ No validator.
 All existing tests instantiate services with `NullLogger<T>.Instance` directly. After this change both services also require `ILoggerFactory`. Update every direct constructor call to pass `NullLoggerFactory.Instance` as the final argument.
 
 Affected helpers:
+
 - `OllamaModelExecutionServiceTests.CreateClient` factory methods — update `new OllamaModelExecutionService(client, NullLogger<...>.Instance)` to add `NullLoggerFactory.Instance`.
 - `SemanticKernelAgenticExecutionServiceTests.BuildService` — update `new SemanticKernelAgenticExecutionService(new FakeKernelFactory(kernel), NullLogger<...>.Instance)` to add `NullLoggerFactory.Instance`.
 - `SemanticKernelAgenticExecutionServiceTests` test that manually constructs the service — same update.
@@ -120,6 +136,7 @@ Add the following new tests to `OllamaModelExecutionServiceTests`:
    Use a `CapturingLoggerFactory`. Execute with a response where `message.content` is `"test response"`. Assert the AI logger received a message containing `"test response"`.
 
 Add `CapturingLoggerFactory` as a private nested class in `OllamaModelExecutionServiceTests`:
+
 ```csharp
 private sealed class CapturingLoggerFactory : ILoggerFactory
 {
@@ -162,6 +179,7 @@ Not applicable to this phase — no visible output change yet. Proceed to Phase 
 **Console (`CraterClaw.Console/Program.cs`):**
 
 Replace the current flat Serilog configuration:
+
 ```csharp
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
@@ -170,6 +188,7 @@ Log.Logger = new LoggerConfiguration()
 ```
 
 With a sub-logger configuration that separates AI traffic:
+
 ```csharp
 var aiEnabled = configuration.GetValue<bool>("aiLogging:enabled");
 var aiPathConfig = configuration.GetValue<string>("aiLogging:path") ?? string.Empty;
@@ -202,6 +221,7 @@ Log.Logger = logConfig.CreateLogger();
 **API (`CraterClaw.Api/CraterClaw.Api.csproj`):**
 
 Add packages:
+
 ```xml
 <PackageReference Include="Serilog" Version="4.2.0" />
 <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0" />
@@ -257,6 +277,7 @@ No test changes in this phase. Existing tests are not affected by entry-point co
 In the Configuration section, add a `### AI logging` subsection after the qBitTorrent section:
 
 Describe:
+
 - `aiLogging.enabled` (bool, default `false`) — when true, Ollama request/response detail is written to a separate rolling log file.
 - `aiLogging.path` (string, optional) — file path prefix for the AI log. When empty, defaults to `logs/ai-` relative to the application directory. Can be absolute or relative to the app directory.
 - How to enable via user secrets: `dotnet user-secrets set "aiLogging:enabled" "true" --project .\CraterClaw.Console`.
@@ -268,6 +289,7 @@ Update the console startup output section: add that `Log file: {logDirectory}` p
 ### Current Architecture Sync
 
 Update `current-architecture.md`:
+
 - Under Logging: note that `CraterClaw.AiTraffic` is a separate Serilog category carrying full Ollama request/response detail, routed to a separate file when `aiLogging.enabled` is true.
 - Note that `AiLoggingOptions` is bound to the `aiLogging` config section.
 - Note the API now uses Serilog (same configuration as the console) with `MinimumLevel.Override` for Microsoft/System namespaces.
@@ -279,10 +301,10 @@ Prerequisites: console or API running with Ollama reachable.
 1. With `aiLogging.enabled = false` (default): run the console through a full agentic task. Open the main log file and confirm it contains tool invocations and finish reason but no message content or request JSON.
 
 2. Set `aiLogging.enabled = true` via user secrets. Run an agentic task. Confirm:
-   - The main log still has no message content.
-   - A new AI log file exists in the `logs/` directory.
-   - The AI log contains the full request JSON including the model name and messages array.
-   - The AI log contains the full response content.
-   - For multi-iteration tasks, the AI log shows the full chat history sent on each iteration without truncation.
+    - The main log still has no message content.
+    - A new AI log file exists in the `logs/` directory.
+    - The AI log contains the full request JSON including the model name and messages array.
+    - The AI log contains the full response content.
+    - For multi-iteration tasks, the AI log shows the full chat history sent on each iteration without truncation.
 
 3. Run the API with `aiLogging.enabled = true`. Issue a `POST /api/providers/{name}/agentic` request. Confirm the AI log captures the same detail as the console.

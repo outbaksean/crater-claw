@@ -1,12 +1,15 @@
 # PowerShell Aliases Spec
 
 ## Name
+
 - powershell-aliases
 
 ## Checkpoint
+
 - powershell-aliases
 
 ## Purpose
+
 Provide a `craterclaw` command available from any directory in PowerShell. Subcommands wrap common development tasks — running, building, testing, and formatting the solution — with sensible defaults and optional parameters.
 
 ## Design
@@ -20,6 +23,7 @@ The module locates the repository via an environment variable `CRATERCLAW_ROOT` 
 ### Install Script
 
 `tools/Install-CraterClaw.ps1` — idempotent install script that:
+
 1. Creates the module directory if it does not exist
 2. Copies `CraterClaw.psm1` into it
 3. Sets `CRATERCLAW_ROOT` as a persistent user-level environment variable pointing to the repository root
@@ -33,21 +37,29 @@ craterclaw <subcommand> [options]
 ```
 
 #### `craterclaw run`
+
 Starts the API and Vue dev server in separate terminal windows.
+
 - `--api-only` — start only the API
 - `--web-only` — start only the Vue dev server
 - `--console` — start the console harness (interactive terminal, not a separate window)
 
 #### `craterclaw build`
+
 Builds the .NET solution.
+
 - No options.
 
 #### `craterclaw test`
+
 Runs all tests: `dotnet test` on the solution and `npm test` in `CraterClaw.Web`.
+
 - `--project <name>` — run tests for one project only. Accepted values: `core`, `api`, `web`.
 
 #### `craterclaw format`
+
 Runs `dotnet format` on the solution and `npm run lint:fix` in `CraterClaw.Web`.
+
 - `--project <name>` — format one project only. Accepted values: `core`, `api`, `web`.
 - `--check` — lint/format without fixing (exits non-zero if issues found); maps to `dotnet format --verify-no-changes` and `npm run lint`.
 
@@ -64,6 +76,7 @@ Each subcommand should surface the exit code of the underlying process. If a pro
 ### Contract
 
 Deliverables:
+
 - `tools/CraterClaw.psm1` — PowerShell module
 - `tools/Install-CraterClaw.ps1` — install script
 
@@ -81,6 +94,7 @@ No automated tests. Manual verification only.
 ### README Sync
 
 Add a `## Developer Commands` section to the README:
+
 - One-time setup: how to run the install script
 - The full command reference table
 - Note that `CRATERCLAW_ROOT` must point to the repository root (set automatically by the install script)

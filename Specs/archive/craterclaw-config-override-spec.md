@@ -106,6 +106,7 @@ Actually the simplest testable approach: both apps check environment variable `C
 **Revised contract:**
 
 Priority order for config path resolution (highest to lowest):
+
 1. `--config <path>` CLI argument
 2. `CRATERCLAW_CONFIG` environment variable
 3. Default: `Path.Combine(AppContext.BaseDirectory, "craterclaw.json")`
@@ -132,6 +133,7 @@ The PowerShell module uses the CLI argument path (not the env var). The env var 
 ### Current Architecture Sync
 
 Update `current-architecture.md`:
+
 - Console Harness Flow: note that `--config <path>` overrides the default config file path.
 - PowerShell module: document `-Config` parameter.
 - Configuration: note the `CRATERCLAW_CONFIG` env var override.

@@ -151,37 +151,6 @@ app.MapGet("/api/profiles", (IBehaviorProfileService profileService) =>
     return Results.Ok(items);
 });
 
-app.MapGet("/api/mcp", (IOptions<McpOptions> opts) =>
-{
-    var servers = opts.Value.Servers
-        .Select(kvp => new McpServerApiItem(kvp.Key, kvp.Value.Label, kvp.Value.Enabled))
-        .ToList();
-    return Results.Ok(servers);
-});
-
-app.MapPost("/api/mcp/{name}/availability", async (
-    string name,
-    IOptions<McpOptions> opts,
-    IMcpAvailabilityService availabilityService,
-    CancellationToken cancellationToken) =>
-{
-    if (!opts.Value.Servers.TryGetValue(name, out var serverOpts))
-        return Results.NotFound();
-
-    var server = new McpServerDefinition(
-        name,
-        serverOpts.Label,
-        serverOpts.Transport,
-        serverOpts.BaseUrl,
-        serverOpts.Command,
-        serverOpts.Args?.AsReadOnly(),
-        serverOpts.Env as IReadOnlyDictionary<string, string>,
-        serverOpts.Enabled);
-
-    var result = await availabilityService.CheckAvailabilityAsync(server, cancellationToken);
-    return Results.Ok(new McpAvailabilityApiResponse(result.Name, result.IsAvailable, result.ErrorMessage));
-});
-
 app.MapPost("/api/providers/{name}/agentic", async (
     string name,
     AgenticApiRequest request,
@@ -226,8 +195,6 @@ internal sealed record ExecutionApiRequest(
     int? MaxTokens = null);
 internal sealed record MessageApiItem(MessageRole Role, string Content);
 internal sealed record ExecutionApiResponse(string Content, string ModelName, FinishReason FinishReason);
-internal sealed record McpServerApiItem(string Name, string Label, bool Enabled);
-internal sealed record McpAvailabilityApiResponse(string Name, bool IsAvailable, string? ErrorMessage);
 internal sealed record AgenticApiRequest(
     string ModelName,
     string Prompt,

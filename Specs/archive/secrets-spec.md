@@ -1,12 +1,15 @@
 # CraterClaw Library Configuration and Secret Management Spec
 
 ## Name
+
 - CraterClaw Library Configuration and Secret Management
 
 ## Purpose
+
 - Adopt `Microsoft.Extensions.Configuration` as the unified configuration backbone, replacing direct `JsonSerializer`-based config loading with a layered system that separates structure (config file), secrets (user secrets), and deployment overrides (environment variables).
 
 ## Scope
+
 - Replace `FileProviderConfigurationService` and `IProviderConfigurationService` with `IOptions<ProviderOptions>` bound from `IConfiguration`.
 - Consolidate `provider-config.json` and `mcp-config.json` into a single `craterclaw.json` config file with named dictionary sections.
 - Change all array-structured config (endpoints list, servers list) to dictionary sections keyed by name. The name is the dictionary key, not a field inside the object. This makes user secret paths stable regardless of ordering.
@@ -22,32 +25,36 @@
 
 ```json
 {
-  "providers": {
-    "active": "local",
-    "endpoints": {
-      "local": {
-        "baseUrl": "http://localhost:11434"
-      },
-      "wslWithLocalhostIp": {
-        "baseUrl": "http://localhost:11435"
-      }
+    "providers": {
+        "active": "local",
+        "endpoints": {
+            "local": {
+                "baseUrl": "http://localhost:11434"
+            },
+            "wslWithLocalhostIp": {
+                "baseUrl": "http://localhost:11435"
+            }
+        }
+    },
+    "mcpServers": {
+        "qbittorrent": {
+            "label": "qBitTorrent",
+            "transport": "stdio",
+            "command": "uvx",
+            "args": [
+                "--from",
+                "git+https://github.com/jmagar/yarr-mcp",
+                "qbittorrent-mcp-server"
+            ],
+            "env": {
+                "QBITTORRENT_URL": "",
+                "QBITTORRENT_USER": "",
+                "QBITTORRENT_PASS": "",
+                "QBITTORRENT_MCP_TRANSPORT": "stdio"
+            },
+            "enabled": true
+        }
     }
-  },
-  "mcpServers": {
-    "qbittorrent": {
-      "label": "qBitTorrent",
-      "transport": "stdio",
-      "command": "uvx",
-      "args": ["--from", "git+https://github.com/jmagar/yarr-mcp", "qbittorrent-mcp-server"],
-      "env": {
-        "QBITTORRENT_URL": "",
-        "QBITTORRENT_USER": "",
-        "QBITTORRENT_PASS": "",
-        "QBITTORRENT_MCP_TRANSPORT": "stdio"
-      },
-      "enabled": true
-    }
-  }
 }
 ```
 
@@ -90,21 +97,25 @@ Validation is implemented via `IValidateOptions<ProviderOptions>` and registered
 - To change the default permanently, edit `craterclaw.json` directly.
 
 ## Contract Notes
+
 - `IProviderConfigurationService` is removed. Consumers that need provider endpoint data inject `IOptions<ProviderOptions>` directly.
 - `ProviderEndpoint` (Name, BaseUrl) is retained as a lightweight runtime record constructed from options at the call site.
 - `ProviderConfiguration` is removed. Its validation logic moves to `IValidateOptions<ProviderOptions>`.
 - `AddCraterClawCore()` accepts `IConfiguration` instead of file path strings.
 
 ## .gitignore Safety Net
+
 - `.env`
 - `*.secrets.json`
 - `*.local.json`
 
 ## Out of Scope
+
 - Windows Credential Manager or DPAPI integration
 - Encryption of secrets at rest
 - Secret rotation or expiry
 - Web API or ASP.NET Core hosting
 
 ## Status
+
 - Done

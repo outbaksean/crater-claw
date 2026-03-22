@@ -13,7 +13,7 @@ public sealed class BehaviorProfileServiceTests
         var service = CreateService(new Dictionary<string, BehaviorEntry>
         {
             ["alpha"] = new BehaviorEntry { Name = "Alpha", Description = "First", SystemPrompt = "Prompt A" },
-            ["beta"]  = new BehaviorEntry { Name = "Beta",  Description = "Second", SystemPrompt = "Prompt B" }
+            ["beta"] = new BehaviorEntry { Name = "Beta", Description = "Second", SystemPrompt = "Prompt B" }
         });
 
         var profiles = service.GetAll();

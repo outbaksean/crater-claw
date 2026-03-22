@@ -1,18 +1,23 @@
 # qBitTorrent Search Tool Spec
 
 ## Name
+
 - qBitTorrent Search Tool
 
 ## Checkpoint
+
 - qbittorrent-search-tool
 
 ## Depends On
+
 - qbittorrent-plugin (checkpoint 10)
 
 ## Purpose
+
 Add a `SearchTorrents` kernel function to `QBitTorrentPlugin` that queries qBitTorrent's built-in search plugin system and returns matching torrent results for use in the agentic execution loop.
 
 ## Scope
+
 - Add `SearchTorrentsAsync` to `QBitTorrentPlugin` as a `[KernelFunction]`.
 - The function starts a search job via the qBitTorrent search API, polls until the job finishes (or a timeout is reached), retrieves results, cleans up the job, and returns a JSON array of results.
 - Update `GetFunctionDescriptions()` to include the new function.
@@ -41,6 +46,7 @@ public async Task<string> SearchTorrentsAsync(
 Return type: `string`. On success, a JSON array. On error, a string starting with `"Error:"`.
 
 Result object shape (each element of the returned array):
+
 ```json
 {
   "fileName": "string",
@@ -53,10 +59,12 @@ Result object shape (each element of the returned array):
 ```
 
 Result trimming rules applied before serialization:
+
 - `fileName` is truncated to 120 characters if longer.
 - `fileUrl` values that are magnet links (start with `magnet:`) have tracker parameters stripped: everything from the first `&tr=` onward is removed, retaining only `magnet:?xt=...&dn=...`. Non-magnet URLs are kept as-is.
 
 `GetFunctionDescriptions()` gains one entry:
+
 ```
 ("SearchTorrents", "Search for torrents using installed search plugins.")
 ```
@@ -97,12 +105,12 @@ In `CraterClaw.Core.Tests/QBitTorrentPluginTests.cs`, add tests using a mock `Ht
 2. Wrap all logic in `try/catch`; on exception log the error and return `$"Error: {ex.Message}"`.
 3. Start the search: POST `/api/v2/search/start` with form fields `pattern=<query>`, `plugins=all`, `category=<category>` via `SendAuthenticatedAsync`. Parse the JSON response body and read the `id` field as an `int`; store as `searchId`.
 4. Poll for completion: loop up to 30 times with a 500ms delay between iterations.
-   - GET `/api/v2/search/status?id=<searchId>` via `SendAuthenticatedAsync`.
-   - Parse response as a JSON array. If any element with matching `id` has `status` equal to `"Stopped"` (case-insensitive), break out of the loop.
+    - GET `/api/v2/search/status?id=<searchId>` via `SendAuthenticatedAsync`.
+    - Parse response as a JSON array. If any element with matching `id` has `status` equal to `"Stopped"` (case-insensitive), break out of the loop.
 5. Fetch results: GET `/api/v2/search/results?id=<searchId>&limit=<maxResults>&offset=0` via `SendAuthenticatedAsync`. Parse the `results` JSON array from the response. Project each element to an anonymous object applying the trimming rules:
-   - `fileName`: raw value truncated to 120 characters.
-   - `fileUrl`: if the value starts with `magnet:` (case-insensitive), remove everything from the first `&tr=` onward; otherwise keep as-is.
-   - `fileSize`, `nbSeeders`, `nbLeechers`, `siteUrl`: taken as-is.
+    - `fileName`: raw value truncated to 120 characters.
+    - `fileUrl`: if the value starts with `magnet:` (case-insensitive), remove everything from the first `&tr=` onward; otherwise keep as-is.
+    - `fileSize`, `nbSeeders`, `nbLeechers`, `siteUrl`: taken as-is.
 6. Clean up: attempt to POST `/api/v2/search/delete` with form field `id=<searchId>` via `SendAuthenticatedAsync`. If this call throws, log a warning and continue — do not propagate the error.
 7. Return `JsonSerializer.Serialize(projectedResults)`.
 
@@ -113,16 +121,19 @@ In the qBitTorrent section of README, add `SearchTorrents` to the list of availa
 ### Current Architecture Sync
 
 Under the `QBitTorrentPlugin` kernel functions list in `current-architecture.md`, add:
+
 - `SearchTorrents` — starts a search job using installed qBitTorrent search plugins, polls until complete, returns a JSON array of results (fileName, fileUrl, fileSize, nbSeeders, nbLeechers, siteUrl). `maxResults` defaults to 10. File names are truncated to 120 characters and magnet link tracker parameters are stripped to reduce response size.
 
 ### Manual Verification Plan
 
 Prerequisites:
+
 - qBitTorrent running with WebUI enabled.
 - At least one search plugin installed and enabled in qBitTorrent (Plugins > Search Plugins).
 - Credentials set in user secrets (`qbittorrent:baseUrl`, `qbittorrent:username`, `qbittorrent:password`).
 
 Steps:
+
 1. Run the console harness.
 2. Select an endpoint, a model, and the `qbittorrent-manager` profile.
 3. Confirm `SearchTorrents` appears in the listed plugin functions.
