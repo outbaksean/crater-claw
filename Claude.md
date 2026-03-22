@@ -9,6 +9,7 @@ Specs/
   target-architecture.md      -- end-goal architecture, high-level, rarely changes
   checkpoints.md              -- ordered list of working stages with dependencies
   current-architecture.md     -- living doc of what is actually built; updated each phase
+  decisions.md                -- architectural decisions with rationale; pending decisions at the bottom
   {checkpoint-name}-spec.md   -- the one active spec; named after its checkpoint
   archive/                    -- completed specs moved here when their checkpoint is done
 ```
@@ -18,6 +19,7 @@ Specs/
 - **target-architecture.md**: Describes the intended end state of the system at a high level. Updated only when the overall direction changes.
 - **checkpoints.md**: An ordered list of working stages. Each checkpoint describes a verifiable, runnable state of the application. Dependencies between checkpoints are noted. The user maintains this list but may ask Claude to generate or update it.
 - **current-architecture.md**: A technical description of what is currently built. Updated after every phase to reflect the real state of the code. Must be accurate enough that a new developer can understand the system without reading specs or source code.
+- **decisions.md**: Records significant architectural decisions with rationale and the pending decisions that still need resolution. Update this file when a meaningful design decision is made during a session — not for implementation details, but for choices that would be hard to reconstruct later (technology selection, architectural tradeoffs, scope decisions).
 - **{checkpoint-name}-spec.md**: The single in-progress spec. Named after the checkpoint it delivers. Contains all phases needed to reach that checkpoint. Moved to `archive/` when the checkpoint is complete.
 
 ### The Phased Planning Model
@@ -29,7 +31,11 @@ Specs/
 
 ### Phase Implementation Checklist
 
-Before starting a phase, verify it has enough detail to proceed. Each phase must follow this loop:
+Specs for code checkpoints and infrastructure checkpoints follow different formats.
+
+**Infrastructure checkpoints** (no code — server setup, environment configuration) have phases with setup steps and a verification checklist. The Contract / Tests / Implement steps do not apply.
+
+**Code checkpoints** follow this loop. Before starting a phase, verify it has enough detail to proceed:
 
 - Define Contract: Generate or update interfaces, types, or API signatures.
 - Write Tests: Generate automated tests based on the contract and spec (before implementation).
@@ -56,7 +62,7 @@ When all phases in a spec are Done, move the spec file to `archive/`.
 ## Git Flow
 
 - The `main` branch is protected. All changes merge via pull request.
-- Each spec gets one feature branch, named after the checkpoint (e.g., `feature/provider-selection`).
+- Each spec gets one feature branch, named after the checkpoint (e.g., `spec/behavior-refactor`).
 - The PR is opened when the spec is complete (all phases done) and ready for review.
 - The user manages all git and GitHub commands manually. Do not run any git or GitHub commands unless explicitly instructed.
 

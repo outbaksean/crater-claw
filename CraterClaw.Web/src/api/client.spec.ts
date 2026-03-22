@@ -5,11 +5,12 @@ import type { ProviderEndpoint, ProviderStatus, ModelItem } from './types'
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
-function mockResponse(data: unknown, ok = true, status = 200) {
+function mockResponse(data: unknown, ok = true, status = 200, bodyText = '') {
   return Promise.resolve({
     ok,
     status,
     json: () => Promise.resolve(data),
+    text: () => Promise.resolve(bodyText),
   } as Response)
 }
 
