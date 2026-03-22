@@ -119,7 +119,13 @@ app.MapPost("/api/providers/{name}/execute", async (
 });
 
 app.MapGet("/api/profiles", (IBehaviorProfileService profileService) =>
-    Results.Ok(profileService.GetAll()));
+{
+    var items = profileService.GetAll().Select(p => new BehaviorProfileApiItem(
+        p.Id, p.Name, p.Description, p.SystemPrompt,
+        p.PreferredProviderName, p.PreferredModelName,
+        p.Plugins.Select(b => new PluginBindingApiItem(b.Name, b.Tools)).ToList())).ToList();
+    return Results.Ok(items);
+});
 
 app.MapGet("/api/mcp", (IOptions<McpOptions> opts) =>
 {
@@ -158,7 +164,7 @@ app.MapPost("/api/providers/{name}/agentic", async (
     IOptions<ProviderOptions> opts,
     IBehaviorProfileService profileService,
     IAgenticExecutionService agenticService,
-    QBitTorrentPlugin qBitTorrentPlugin,
+    IPluginRegistry pluginRegistry,
     CancellationToken cancellationToken) =>
 {
     if (!opts.Value.Endpoints.TryGetValue(name, out var endpointOpts))
@@ -169,15 +175,14 @@ app.MapPost("/api/providers/{name}/agentic", async (
         return Results.BadRequest($"Profile '{request.ProfileId}' not found.");
 
     var endpoint = new ProviderEndpoint(name, endpointOpts.BaseUrl);
-    IReadOnlyList<object> plugins = profile.AllowedMcpServerNames.Count > 0
-        ? [qBitTorrentPlugin]
-        : [];
+    var plugins = pluginRegistry.Resolve(profile.Plugins);
 
     var agenticRequest = new AgenticRequest(
         request.ModelName,
         request.Prompt,
         plugins,
-        request.MaxIterations ?? 10);
+        request.MaxIterations ?? 10,
+        SystemPrompt: profile.SystemPrompt);
 
     var result = await agenticService.ExecuteAsync(endpoint, agenticRequest, cancellationToken);
     return Results.Ok(new AgenticApiResponse(result.Content, result.FinishReason, result.ToolsInvoked));
@@ -205,3 +210,12 @@ internal sealed record AgenticApiRequest(
     string ProfileId,
     int? MaxIterations = null);
 internal sealed record AgenticApiResponse(string Content, AgenticFinishReason FinishReason, IReadOnlyList<string> ToolsInvoked);
+internal sealed record PluginBindingApiItem(string Name, IReadOnlyList<string> Tools);
+internal sealed record BehaviorProfileApiItem(
+    string Id,
+    string Name,
+    string Description,
+    string SystemPrompt,
+    string? PreferredProviderName,
+    string? PreferredModelName,
+    IReadOnlyList<PluginBindingApiItem> Plugins);

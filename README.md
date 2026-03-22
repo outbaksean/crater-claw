@@ -12,9 +12,19 @@ The console harness supports:
 - Interactive model execution (single prompt/response)
 - MCP server listing with transport type and enabled status
 - MCP server availability checks (HTTP GET for http servers; PATH walk for stdio servers)
-- Behavior profile selection (`no-tools`, `qbittorrent-manager`)
+- Behavior profile selection driven by `craterclaw.json` (`no-tools`, `qbittorrent-seedbox`)
+- Preferred provider and model defaults applied from the selected profile; warnings printed when the preferred value is not available
 - Plugin function listing: after selecting a profile, the console displays the available kernel functions by name and description
-- Agentic task execution: after selecting a profile and model, enter a task prompt to run the SK agentic loop with the permitted plugins; tool invocations and the final response are displayed
+- Agentic task execution: after selecting a profile and model, enter a task prompt to run the SK agentic loop with the selected profile's plugins; tool invocations and the final response are displayed
+
+The Vue frontend supports:
+
+- Provider list with reachability status indicator
+- Model list for the active provider
+- Interactive chat (single-turn prompt/response)
+- Behavior profile selection
+- Preferred provider and model defaults applied automatically when a profile is selected; warnings shown inline when the preferred value is not available
+- Agentic task panel (shown when provider + model + profile are all selected)
 
 Configuration is layered: `craterclaw.json` (committed, no secrets) -> dotnet user secrets (dev) -> OS environment variables (deployment). Sensitive values such as MCP server credentials are stored outside the repository.
 
@@ -67,18 +77,18 @@ To uninstall:
 
 ### Commands
 
-| Command | Description |
-|---|---|
-| `craterclaw run` | Start the API and Vue dev server in separate windows |
-| `craterclaw run -ApiOnly` | Start only the API |
-| `craterclaw run -WebOnly` | Start only the Vue dev server |
-| `craterclaw run -Console` | Start the console harness in the current terminal |
-| `craterclaw build` | Build the .NET solution |
-| `craterclaw test` | Run all tests (dotnet + npm) |
-| `craterclaw test -Project core` | Run core tests only (`core`, `api`, or `web`) |
-| `craterclaw format` | Format all source (dotnet format + npm run lint:fix) |
-| `craterclaw format -Project web` | Format one project (`core`, `api`, or `web`) |
-| `craterclaw format -Check` | Verify formatting without making changes |
+| Command                          | Description                                          |
+| -------------------------------- | ---------------------------------------------------- |
+| `craterclaw run`                 | Start the API and Vue dev server in separate windows |
+| `craterclaw run -ApiOnly`        | Start only the API                                   |
+| `craterclaw run -WebOnly`        | Start only the Vue dev server                        |
+| `craterclaw run -Console`        | Start the console harness in the current terminal    |
+| `craterclaw build`               | Build the .NET solution                              |
+| `craterclaw test`                | Run all tests (dotnet + npm)                         |
+| `craterclaw test -Project core`  | Run core tests only (`core`, `api`, or `web`)        |
+| `craterclaw format`              | Format all source (dotnet format + npm run lint:fix) |
+| `craterclaw format -Project web` | Format one project (`core`, `api`, or `web`)         |
+| `craterclaw format -Check`       | Verify formatting without making changes             |
 
 ## Formatting
 
@@ -161,7 +171,7 @@ Edit `craterclaw.json` to add or change endpoints and set the default active one
         "active": "local",
         "endpoints": {
             "local": { "baseUrl": "http://localhost:11434" },
-            "lan":   { "baseUrl": "http://192.168.1.50:11434" }
+            "lan": { "baseUrl": "http://192.168.1.50:11434" }
         }
     }
 }
@@ -175,7 +185,7 @@ dotnet user-secrets set "providers:active" "lan" --project .\CraterClaw.Console
 
 ### qBitTorrent plugin
 
-The `qbittorrent-manager` behavior profile enables the following kernel functions:
+qBitTorrent behaviors enable the following kernel functions:
 
 - `ListTorrents` - list all torrents with name, hash, status, progress, and size
 - `AddTorrentByUrl` - add a torrent from a magnet link or HTTP URL
@@ -185,24 +195,34 @@ The `qbittorrent-manager` behavior profile enables the following kernel function
 - `GetTransferStats` - current download/upload speeds and session totals
 - `SearchTorrents` - search for torrents using installed qBitTorrent search plugins; requires at least one search plugin enabled in qBitTorrent (Plugins > Search Plugins)
 
-qBitTorrent credentials live under `qbittorrent` in `craterclaw.json`. Leave the file values empty and supply real values via user secrets:
+qBitTorrent credentials live inside each behavior's plugin binding in `craterclaw.json`. Leave the file values empty and supply real values via user secrets. The path includes the behavior id and the array index of the plugin entry (`0` for the first plugin):
 
 ```powershell
-dotnet user-secrets set "qbittorrent:baseUrl"  "http://192.168.1.x:8080" --project .\CraterClaw.Console
-dotnet user-secrets set "qbittorrent:username" "admin"                    --project .\CraterClaw.Console
-dotnet user-secrets set "qbittorrent:password" "your-password"            --project .\CraterClaw.Console
+dotnet user-secrets set "behaviors:qbittorrent-home:plugins:0:config:baseUrl"  "http://192.168.1.x:8080" --project .\CraterClaw.Console
+dotnet user-secrets set "behaviors:qbittorrent-home:plugins:0:config:username" "admin"                    --project .\CraterClaw.Console
+dotnet user-secrets set "behaviors:qbittorrent-home:plugins:0:config:password" "your-password"            --project .\CraterClaw.Console
+
+dotnet user-secrets set "behaviors:qbittorrent-seedbox:plugins:0:config:baseUrl"  "http://seedbox.example.com:8080" --project .\CraterClaw.Console
+dotnet user-secrets set "behaviors:qbittorrent-seedbox:plugins:0:config:username" "admin"                           --project .\CraterClaw.Console
+dotnet user-secrets set "behaviors:qbittorrent-seedbox:plugins:0:config:password" "your-password"                   --project .\CraterClaw.Console
 ```
 
 Note: the `--project` flag is required. Running `dotnet user-secrets` from the repository root without it will fail because there are multiple projects in the solution.
 
+Note: the `0` in the path is the zero-based index of the plugin entry within the behavior's `plugins` array. If plugins are reordered in `craterclaw.json`, the secret paths must be updated to match.
+
 User secrets are stored in `%APPDATA%\Microsoft\UserSecrets\craterclaw-console\secrets.json` on Windows, outside the repository.
 
-For deployment, use OS environment variables:
+For deployment, use OS environment variables (double underscore as path separator):
 
 ```powershell
-$env:qbittorrent__baseUrl  = "http://192.168.1.x:8080"
-$env:qbittorrent__username = "admin"
-$env:qbittorrent__password = "your-password"
+$env:behaviors__qbittorrent-home__plugins__0__config__baseUrl  = "http://192.168.1.x:8080"
+$env:behaviors__qbittorrent-home__plugins__0__config__username = "admin"
+$env:behaviors__qbittorrent-home__plugins__0__config__password = "your-password"
+
+$env:behaviors__qbittorrent-seedbox__plugins__0__config__baseUrl  = "http://seedbox.example.com:8080"
+$env:behaviors__qbittorrent-seedbox__plugins__0__config__username = "admin"
+$env:behaviors__qbittorrent-seedbox__plugins__0__config__password = "your-password"
 ```
 
 ### AI logging

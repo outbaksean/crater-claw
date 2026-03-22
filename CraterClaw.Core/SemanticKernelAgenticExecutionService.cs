@@ -19,13 +19,11 @@ internal sealed class SemanticKernelAgenticExecutionService(
         var kernel = kernelFactory.Create(endpoint, request.ModelName);
 
         foreach (var plugin in request.Plugins)
-            kernel.Plugins.AddFromObject(plugin);
+            kernel.Plugins.Add(plugin);
 
         var chatHistory = new ChatHistory();
-        chatHistory.AddSystemMessage(
-            "You are a helpful assistant with access to tools. " +
-            "When a tool returns results, use those results to directly and concisely answer the user's original question. " +
-            "Do not describe or explain the raw data — just answer the question.");
+        if (!string.IsNullOrEmpty(request.SystemPrompt))
+            chatHistory.AddSystemMessage(request.SystemPrompt);
         chatHistory.AddUserMessage(request.Prompt);
 
         var settings = new PromptExecutionSettings

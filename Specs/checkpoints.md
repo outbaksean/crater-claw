@@ -136,6 +136,10 @@ Enable thinking mode by using OllamaPromptExecutionSettings instead of PromptExe
 
 Refactor the web ux with better placement of providers, models, behavior, chat boxes
 
+### investigate-child-agents
+
+Investigate allowing the model to spawn subagents. The output will either be checkpoints or a notes file
+
 ### craterclaw-config-override
 
 Add support for an alternate `craterclaw.json` path via a command-line argument or environment variable in both the console and API. Expose this as `--config <path>` in the `craterclaw run` and `craterclaw run --console` commands.

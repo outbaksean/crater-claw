@@ -3,17 +3,16 @@ using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
 
 namespace CraterClaw.Core;
 
 public sealed class QBitTorrentPlugin(
     HttpClient httpClient,
-    IOptions<QBitTorrentOptions> options,
+    QBitTorrentOptions options,
     ILogger<QBitTorrentPlugin> logger)
 {
-    private readonly QBitTorrentOptions _options = options.Value;
+    private readonly QBitTorrentOptions _options = options;
     private string? _sid;
 
     private bool IsConfigured => !string.IsNullOrWhiteSpace(_options.BaseUrl);

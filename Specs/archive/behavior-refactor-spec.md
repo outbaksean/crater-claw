@@ -2,16 +2,19 @@
 
 ## Goal
 
-Move behavior definitions out of hardcoded C# into `craterclaw.json`. Each behavior gains a system prompt, preferred model and provider defaults, and a list of plugins with optional per-tool filtering. When a behavior is selected, the preferred provider and model are applied automatically if available; if not, a warning is shown. A plugin registry maps plugin/tool names to pre-filtered SK kernel plugins, replacing the hardcoded plugin-selection logic.
+Move behavior definitions out of hardcoded C# into `craterclaw.json`. Each behavior gains a system prompt, preferred model and provider defaults, and a list of plugins with optional per-tool filtering and per-binding connection config. When a behavior is selected, the preferred provider and model are applied automatically if available; if not, a warning is shown. A plugin registry maps plugin/tool names to pre-filtered SK kernel plugins, replacing the hardcoded plugin-selection logic.
 
 ## Checkpoint Deliverable
 
 - Behaviors are defined in `craterclaw.json` under a `behaviors` section.
-- Each behavior specifies plugins as a list of `{ name, tools }` entries; empty `tools` means all tools in the plugin.
-- `BehaviorProfile` includes `SystemPrompt`, `PreferredModelName` (nullable), `PreferredProviderName` (nullable), and `Plugins` (list of plugin bindings with tool allowlists).
+- Each behavior specifies plugins as a list of `{ name, tools, config }` entries; empty `tools` means all tools in the plugin; `config` holds plugin-specific connection settings (e.g. qBitTorrent credentials).
+- Multiple behaviors may reference the same plugin name with different `config` values (e.g. two qBitTorrent behaviors pointing at different clients).
+- `BehaviorProfile` includes `SystemPrompt`, `PreferredModelName` (nullable), `PreferredProviderName` (nullable), and `Plugins` (list of plugin bindings with tool allowlists and config).
 - Selecting a behavior pre-selects its preferred provider and model where available; shows a warning where not.
 - The agentic execution service applies the behavior's system prompt.
-- A plugin registry resolves plugin bindings into pre-filtered SK `KernelPlugin` instances.
+- A plugin registry resolves plugin bindings into pre-filtered SK `KernelPlugin` instances, constructing each plugin instance from the binding's `config`.
+- The top-level `qbittorrent` config section is removed; all qBitTorrent connection settings live inside the behavior's plugin binding.
+- `config` is excluded from `GET /api/profiles` responses as it may contain credentials.
 - Hardcoded behavior catalog and hardcoded plugin-selection logic are removed.
 - Web frontend handles behavior-driven provider/model defaults with warning states.
 
@@ -19,7 +22,7 @@ Move behavior definitions out of hardcoded C# into `craterclaw.json`. Each behav
 
 ## Phase 1: Behavior config types and profile model update
 
-**Status:** Pending
+**Status:** Done
 
 ### Contract
 
@@ -30,6 +33,7 @@ public sealed class PluginEntry
 {
     public string Name { get; set; } = "";
     public List<string> Tools { get; set; } = []; // empty = all tools in the plugin
+    public Dictionary<string, string> Config { get; set; } = [];
 }
 
 public sealed class BehaviorEntry
@@ -48,7 +52,10 @@ public sealed class BehaviorEntry
 Updated `BehaviorProfile` record:
 
 ```csharp
-public sealed record PluginBinding(string Name, IReadOnlyList<string> Tools);
+public sealed record PluginBinding(
+    string Name,
+    IReadOnlyList<string> Tools,
+    IReadOnlyDictionary<string, string> Config);
 
 public sealed record BehaviorProfile(
     string Id,
@@ -71,7 +78,7 @@ Update `BehaviorProfileServiceTests`:
 - Verify `GetById` returns null for an unknown id.
 - Verify `SystemPrompt`, `PreferredProviderName`, `PreferredModelName` are mapped correctly.
 - Verify null preferred fields pass through as null.
-- Verify `Plugins` list maps correctly: name and tools list preserved; empty tools list preserved as empty.
+- Verify `Plugins` list maps correctly: name, tools list, and config dict preserved; empty tools list preserved as empty.
 - Verify empty config produces an empty catalog.
 
 Update `ProfilesMcpAgenticEndpointTests` to reflect the changed `BehaviorProfile` shape returned by `GET /api/profiles`.
@@ -83,7 +90,7 @@ Update `ProfilesMcpAgenticEndpointTests` to reflect the changed `BehaviorProfile
 3. Register `Dictionary<string, BehaviorEntry>` via `IOptions<>` in `ServiceCollectionExtensions`, bound to `"behaviors"`.
 4. Rewrite `BehaviorProfileService` to inject options and map entries to `BehaviorProfile` records (dict key becomes `Id`; `PluginEntry` → `PluginBinding`).
 5. Remove `RecommendedModelTags` and `AllowedMcpServerNames` from `BehaviorProfile` and the hardcoded catalog from `BehaviorProfileService`.
-6. Add sample behavior definitions to `craterclaw.json` in `CraterClaw.Console`:
+6. Add sample behavior definitions to `craterclaw.json`. The top-level `qbittorrent` section is removed; connection settings move into each behavior's plugin binding:
 
 ```json
 "behaviors": {
@@ -95,14 +102,40 @@ Update `ProfilesMcpAgenticEndpointTests` to reflect the changed `BehaviorProfile
     "preferredModelName": null,
     "plugins": []
   },
-  "qbittorrent-manager": {
-    "name": "qBitTorrent Manager",
-    "description": "Querying and managing downloads using qBitTorrent.",
+  "qbittorrent-home": {
+    "name": "qBitTorrent (Home)",
+    "description": "Managing downloads on the home qBitTorrent client.",
     "systemPrompt": "You are a torrent management assistant. Use the available tools to help manage downloads.",
     "preferredProviderName": null,
     "preferredModelName": null,
     "plugins": [
-      { "name": "qbittorrent", "tools": [] }
+      {
+        "name": "qbittorrent",
+        "tools": [],
+        "config": {
+          "baseUrl": "http://localhost:8080",
+          "username": "",
+          "password": ""
+        }
+      }
+    ]
+  },
+  "qbittorrent-seedbox": {
+    "name": "qBitTorrent (Seedbox)",
+    "description": "Managing downloads on the remote seedbox qBitTorrent client.",
+    "systemPrompt": "You are a torrent management assistant. Use the available tools to help manage downloads.",
+    "preferredProviderName": null,
+    "preferredModelName": null,
+    "plugins": [
+      {
+        "name": "qbittorrent",
+        "tools": [],
+        "config": {
+          "baseUrl": "http://seedbox.example.com:8080",
+          "username": "",
+          "password": ""
+        }
+      }
     ]
   }
 }
@@ -112,13 +145,13 @@ Update `ProfilesMcpAgenticEndpointTests` to reflect the changed `BehaviorProfile
 
 - `dotnet test` — all tests pass.
 - Run console harness; select a behavior; verify name and description display.
-- `GET /api/profiles` returns both behaviors with `systemPrompt`, `preferredProviderName`, `preferredModelName`, and `plugins` (array of `{ name, tools }`).
+- `GET /api/profiles` returns behaviors with `systemPrompt`, `preferredProviderName`, `preferredModelName`, and `plugins` (array of `{ name, tools }` — no `config` field in response).
 
 ---
 
 ## Phase 2: System prompt in agentic execution
 
-**Status:** Pending
+**Status:** Done
 
 ### Contract
 
@@ -157,14 +190,14 @@ Tests must not hit a real Ollama instance; mock or stub the SK chat completion.
 
 ### Manual Verification Plan
 
-- Run console; pick qbittorrent-manager; issue a task prompt. With `aiLogging.enabled: true`, confirm the system prompt appears in the AI traffic log.
+- Run console; pick a qbittorrent behavior; issue a task prompt. With `aiLogging.enabled: true`, confirm the system prompt appears in the AI traffic log.
 - `dotnet test` — all tests pass.
 
 ---
 
-## Phase 3: Plugin registry with tool filtering, and preferred defaults in console and API
+## Phase 3: Plugin registry with tool filtering, per-binding instantiation, and preferred defaults
 
-**Status:** Pending
+**Status:** Done
 
 ### Contract
 
@@ -173,21 +206,29 @@ New types in `CraterClaw.Core`:
 ```csharp
 public interface IPluginRegistry
 {
-    // Returns pre-filtered KernelPlugin instances ready to add to a kernel.
-    // Empty Tools list in a PluginBinding means all tools in the plugin are included.
+    // Creates pre-filtered KernelPlugin instances from the given bindings.
+    // Each plugin instance is constructed using the binding's Config.
+    // Empty Tools list means all tools in the plugin are included.
     // Unknown plugin names are skipped (logged as warning).
     IReadOnlyList<KernelPlugin> Resolve(IEnumerable<PluginBinding> plugins);
 }
 ```
 
-`DefaultPluginRegistry` implements `IPluginRegistry`. At construction it holds a map of plugin name → plugin factory/instance (injected via DI). For each `PluginBinding`:
+`DefaultPluginRegistry` implements `IPluginRegistry`. At construction it holds a map of plugin name → factory delegate of type `Func<IReadOnlyDictionary<string, string>, object>`. For each `PluginBinding`:
 
-1. Look up the raw plugin instance by name. If not found, log a warning and skip.
-2. Create a full `KernelPlugin` from the instance via `KernelPluginFactory.CreateFromObject`.
-3. If `PluginBinding.Tools` is non-empty, filter the plugin's functions to only those whose names appear in the `Tools` list (case-insensitive). Unknown tool names are logged as warnings and skipped. Build a new `KernelPlugin` from the filtered functions via `KernelPluginFactory.CreateFromFunctions`.
-4. If `PluginBinding.Tools` is empty, use the full plugin unfiltered.
+1. Look up the factory by name. If not found, log a warning and skip.
+2. Invoke the factory with `PluginBinding.Config` to produce a plugin object instance.
+3. Create a full `KernelPlugin` from the instance via `KernelPluginFactory.CreateFromObject`.
+4. If `PluginBinding.Tools` is non-empty, filter the plugin's functions to only those whose names appear in the `Tools` list (case-insensitive). Unknown tool names are logged as warnings and skipped. Build a new `KernelPlugin` from the filtered functions via `KernelPluginFactory.CreateFromFunctions`.
+5. If `PluginBinding.Tools` is empty, use the full plugin unfiltered.
+
+`QBitTorrentPlugin` constructor changes to accept `QBitTorrentOptions` directly (not `IOptions<QBitTorrentOptions>`). The singleton `QBitTorrentPlugin` DI registration is removed. The `QBitTorrentOptions` options registration and `QBitTorrentOptionsValidator` are removed from `ServiceCollectionExtensions`. The top-level `qbittorrent` section is removed from `craterclaw.json`.
+
+The "qbittorrent" factory delegate constructs a `QBitTorrentOptions` from the binding's config dict (`baseUrl`, `username`, `password` keys) and creates a new `QBitTorrentPlugin` instance. `IHttpClientFactory` and `ILogger<QBitTorrentPlugin>` are captured from DI when the registry is constructed.
 
 `AgenticRequest.Plugins` changes to `IReadOnlyList<KernelPlugin>`. `SemanticKernelAgenticExecutionService` uses `kernel.Plugins.Add(plugin)` for each entry instead of `kernel.Plugins.AddFromObject(plugin)`.
+
+**`GET /api/profiles` response:** The `config` field of each `PluginBinding` must not appear in the serialized response as it may contain credentials. Achieve this via a dedicated response DTO or `[JsonIgnore]` on the `Config` property of the serialized type.
 
 **Preferred default resolution — console:**
 After the user selects a behavior:
@@ -208,36 +249,41 @@ The API agentic endpoint accepts explicit `ModelName` and `ProviderName` from th
 - Resolving an empty binding list returns an empty list.
 - Resolving a binding with an unknown plugin name returns an empty list (no exception).
 - Resolving a mix of known and unknown plugin names returns only the known ones.
+- Resolving a binding passes the binding's `Config` dict to the factory delegate.
 
 ### Implementation
 
-1. Create `IPluginRegistry` and `DefaultPluginRegistry` in `CraterClaw.Core`. Inject `QBitTorrentPlugin` (or its factory) and map `"qbittorrent"` to it.
-2. Implement tool filtering using `KernelPluginFactory.CreateFromObject` and `KernelPluginFactory.CreateFromFunctions`.
-3. Register `IPluginRegistry` → `DefaultPluginRegistry` as singleton in `ServiceCollectionExtensions`.
-4. Update `AgenticRequest.Plugins` to `IReadOnlyList<KernelPlugin>`. Update `SemanticKernelAgenticExecutionService` to use `kernel.Plugins.Add(plugin)`.
-5. Console: replace plugin-selection block with `pluginRegistry.Resolve(profile.Plugins)`. Implement preferred provider and model resolution.
-6. API: replace plugin-selection block with `pluginRegistry.Resolve(profile.Plugins)`.
-7. Fix any compilation failures from removed fields (`RecommendedModelTags`, `AllowedMcpServerNames`).
+1. Change `QBitTorrentPlugin` constructor to accept `QBitTorrentOptions` directly instead of `IOptions<QBitTorrentOptions>`.
+2. Remove `QBitTorrentPlugin` singleton, `QBitTorrentOptions` options binding, and `QBitTorrentOptionsValidator` from `ServiceCollectionExtensions`.
+3. Create `IPluginRegistry` and `DefaultPluginRegistry` in `CraterClaw.Core`. Register the "qbittorrent" factory delegate (captures `IHttpClientFactory` and `ILogger<QBitTorrentPlugin>` from DI; constructs `QBitTorrentOptions` from config dict keys `baseUrl`, `username`, `password`).
+4. Implement tool filtering using `KernelPluginFactory.CreateFromObject` and `KernelPluginFactory.CreateFromFunctions`.
+5. Register `IPluginRegistry` → `DefaultPluginRegistry` as singleton in `ServiceCollectionExtensions`.
+6. Update `AgenticRequest.Plugins` to `IReadOnlyList<KernelPlugin>`. Update `SemanticKernelAgenticExecutionService` to use `kernel.Plugins.Add(plugin)`.
+7. Console: replace plugin-selection block with `pluginRegistry.Resolve(profile.Plugins)`. Implement preferred provider and model resolution.
+8. API: replace plugin-selection block with `pluginRegistry.Resolve(profile.Plugins)`. Ensure `config` is excluded from the `GET /api/profiles` response.
+9. Remove the top-level `qbittorrent` section from `craterclaw.json`. Update the two qbittorrent behaviors with real connection values.
 
 ### Manual Verification Plan
 
-**Dependencies:** `craterclaw.json` with both behavior entries; qBitTorrent running for the qbittorrent-manager path.
+**Dependencies:** `craterclaw.json` with behavior entries configured; qBitTorrent running for the qbittorrent behavior paths.
 
 - `dotnet test` — all tests pass.
 - Console: no-tools behavior → agentic task → AI makes no tool calls.
-- Console: qbittorrent-manager with empty tools → all qBitTorrent functions available.
-- Update qbittorrent-manager to `"tools": ["ListTorrents", "SearchTorrents"]` → agentic task → only those two functions are invocable; other qBitTorrent functions are absent.
+- Console: qbittorrent-home behavior → all qBitTorrent functions available; operations use the home client connection.
+- Console: qbittorrent-seedbox behavior → all qBitTorrent functions available; operations use the seedbox connection.
+- Update one qbittorrent behavior to `"tools": ["ListTorrents", "SearchTorrents"]` → agentic task → only those two functions are invocable; other qBitTorrent functions are absent.
 - Set `preferredModelName` on a behavior to a model that exists → console notes the preference and uses it.
 - Set `preferredModelName` to a non-existent model → console prints warning, uses prior model selection.
 - Set `preferredProviderName` to a non-configured provider → console prints warning, uses current provider.
 - API `POST .../agentic` with `profileId: "no-tools"` — succeeds, no tools invoked.
-- API with `profileId: "qbittorrent-manager"` — succeeds.
+- API with a qbittorrent profileId — succeeds.
+- `GET /api/profiles` — response does not include `config` in any plugin binding.
 
 ---
 
 ## Phase 4: Web frontend — behavior-driven defaults and warnings
 
-**Status:** Pending
+**Status:** Done
 
 ### Contract
 
@@ -247,6 +293,7 @@ The API agentic endpoint accepts explicit `ModelName` and `ProviderName` from th
 interface PluginBinding {
     name: string;
     tools: string[];
+    // config is intentionally omitted — excluded from API responses
 }
 
 interface BehaviorProfile {
@@ -301,17 +348,17 @@ Tests use stub providers/models lists; no network calls.
 
 ### README Sync
 
-- Configuration section: document the full `behaviors` JSON structure including the `plugins` array with per-tool filtering, and all other fields.
+- Configuration section: document the full `behaviors` JSON structure including the `plugins` array with per-tool filtering, `config` dict for plugin connection settings, and all other fields.
 - Console Flow section: describe preferred provider/model default behavior and warning output.
 
 ### Current Architecture Sync
 
 Update `current-architecture.md`:
 
-- Behavior Profiles: config-driven loading, full `BehaviorProfile` and `PluginBinding` field descriptions, per-tool filtering semantics, preferred defaults and warning behavior, `IPluginRegistry`.
-- Remove `RecommendedModelTags` and `AllowedMcpServerNames` references.
+- Behavior Profiles: config-driven loading, full `BehaviorProfile` and `PluginBinding` field descriptions, per-tool filtering semantics, per-binding plugin instantiation from `config`, preferred defaults and warning behavior, `IPluginRegistry`.
+- Remove `RecommendedModelTags`, `AllowedMcpServerNames`, and top-level `qbittorrent` config section references.
 - Note `AgenticRequest.SystemPrompt` and `AgenticRequest.Plugins` type change to `IReadOnlyList<KernelPlugin>`.
-- Web: describe `preferredProviderName`/`preferredModelName` resolution and warning display.
+- Web: describe `preferredProviderName`/`preferredModelName` resolution and warning display; note `config` is not present in frontend types.
 
 ### Manual Verification Plan
 

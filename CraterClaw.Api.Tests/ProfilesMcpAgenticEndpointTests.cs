@@ -10,8 +10,9 @@ public sealed class ProfilesMcpAgenticEndpointTests
 {
     private static readonly IReadOnlyList<BehaviorProfile> TestProfiles =
     [
-        new("no-tools", "No Tools", "Basic chat with no plugins.", [], []),
-        new("qbittorrent-manager", "qBitTorrent Manager", "Manage torrents.", ["qbt"], ["qbittorrent"])
+        new("no-tools", "No Tools", "Basic chat with no plugins.", "You are a helpful assistant.", null, null, []),
+        new("qbittorrent-manager", "qBitTorrent Manager", "Manage torrents.", "You are a torrent manager.", null, null,
+            [new PluginBinding("qbittorrent", [], new Dictionary<string, string>())])
     ];
 
     // --- Profiles ---

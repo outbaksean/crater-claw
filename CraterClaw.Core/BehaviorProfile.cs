@@ -1,8 +1,15 @@
 namespace CraterClaw.Core;
 
+public sealed record PluginBinding(
+    string Name,
+    IReadOnlyList<string> Tools,
+    IReadOnlyDictionary<string, string> Config);
+
 public sealed record BehaviorProfile(
     string Id,
     string Name,
     string Description,
-    IReadOnlyList<string> RecommendedModelTags,
-    IReadOnlyList<string> AllowedMcpServerNames);
+    string SystemPrompt,
+    string? PreferredProviderName,
+    string? PreferredModelName,
+    IReadOnlyList<PluginBinding> Plugins);

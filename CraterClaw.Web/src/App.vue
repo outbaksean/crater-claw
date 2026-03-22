@@ -3,6 +3,7 @@ import { onMounted, watch } from 'vue'
 import { useProviders } from './composables/useProviders'
 import { useModels } from './composables/useModels'
 import { useProfiles } from './composables/useProfiles'
+import { useBehaviorDefaults } from './composables/useBehaviorDefaults'
 import InteractiveChat from './components/InteractiveChat.vue'
 import ProfileSelector from './components/ProfileSelector.vue'
 import AgenticPanel from './components/AgenticPanel.vue'
@@ -56,10 +57,18 @@ const {
   selectProfile,
 } = useProfiles()
 
+const { behaviorWarnings, applyProfileDefaults } = useBehaviorDefaults(
+  providers,
+  models,
+  selectProvider,
+  selectModel,
+)
+
 onMounted(fetchProfiles)
 
 function onSelectProfile(profile: BehaviorProfile) {
   selectProfile(profile)
+  applyProfileDefaults(profile)
 }
 
 function formatSize(bytes: number): string {
@@ -141,6 +150,11 @@ function formatSize(bytes: number): string {
             :selected-profile="selectedProfile"
             @select="onSelectProfile"
           />
+          <ul v-if="behaviorWarnings.length" class="warning-list">
+            <li v-for="warning in behaviorWarnings" :key="warning" class="warning">
+              {{ warning }}
+            </li>
+          </ul>
         </section>
       </Transition>
 
@@ -273,5 +287,18 @@ function formatSize(bytes: number): string {
 
 .error {
   color: var(--err);
+}
+
+.warning-list {
+  list-style: none;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.warning {
+  font-size: 12px;
+  color: var(--warn, #c87a20);
 }
 </style>

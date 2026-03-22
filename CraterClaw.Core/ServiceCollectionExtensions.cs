@@ -26,13 +26,11 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<McpOptions>, McpOptionsValidator>();
 
-        services.AddOptions<QBitTorrentOptions>()
-            .Bind(configuration.GetSection("qbittorrent"))
-            .ValidateOnStart();
-        services.AddSingleton<IValidateOptions<QBitTorrentOptions>, QBitTorrentOptionsValidator>();
-
         services.AddOptions<AiLoggingOptions>()
             .Bind(configuration.GetSection("aiLogging"));
+
+        services.AddOptions<Dictionary<string, BehaviorEntry>>()
+            .Bind(configuration.GetSection("behaviors"));
 
         services.AddTransient<IProviderStatusService, OllamaProviderStatusService>();
         services.AddTransient<IModelListingService, OllamaModelListingService>();
@@ -43,10 +41,25 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IKernelFactory, DefaultKernelFactory>();
         services.AddTransient<IAgenticExecutionService, SemanticKernelAgenticExecutionService>();
         services.AddHttpClient("qbittorrent");
-        services.AddSingleton(sp => new QBitTorrentPlugin(
-            sp.GetRequiredService<IHttpClientFactory>().CreateClient("qbittorrent"),
-            sp.GetRequiredService<IOptions<QBitTorrentOptions>>(),
-            sp.GetRequiredService<ILogger<QBitTorrentPlugin>>()));
+        services.AddSingleton<IPluginRegistry>(sp =>
+        {
+            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var pluginLogger = sp.GetRequiredService<ILogger<QBitTorrentPlugin>>();
+            var registryLogger = sp.GetRequiredService<ILogger<DefaultPluginRegistry>>();
+            var factories = new Dictionary<string, Func<IReadOnlyDictionary<string, string>, object>>
+            {
+                ["qbittorrent"] = config => new QBitTorrentPlugin(
+                    httpClientFactory.CreateClient("qbittorrent"),
+                    new QBitTorrentOptions
+                    {
+                        BaseUrl = config.GetValueOrDefault("baseUrl"),
+                        Username = config.GetValueOrDefault("username"),
+                        Password = config.GetValueOrDefault("password")
+                    },
+                    pluginLogger)
+            };
+            return new DefaultPluginRegistry(factories, registryLogger);
+        });
 
         return services;
     }
