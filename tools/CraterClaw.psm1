@@ -103,6 +103,7 @@ function Invoke-CcFormat {
     $failed = $false
     $dotnetFormatArgs = if ($Check) { @('--verify-no-changes') } else { @() }
     $npmScript = if ($Check) { 'lint' } else { 'lint:fix' }
+    $mdScript = if ($Check) { 'format:md:check' } else { 'format:md' }
 
     switch ($Project.ToLowerInvariant()) {
         'core' {
@@ -117,6 +118,8 @@ function Invoke-CcFormat {
             Push-Location (Join-Path $Root 'CraterClaw.Web')
             & npm run $npmScript
             if ($LASTEXITCODE -ne 0) { $failed = $true }
+            & npm run $mdScript
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
             Pop-Location
         }
         default {
@@ -124,6 +127,8 @@ function Invoke-CcFormat {
             if ($LASTEXITCODE -ne 0) { $failed = $true }
             Push-Location (Join-Path $Root 'CraterClaw.Web')
             & npm run $npmScript
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
+            & npm run $mdScript
             if ($LASTEXITCODE -ne 0) { $failed = $true }
             Pop-Location
         }

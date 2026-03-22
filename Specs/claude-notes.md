@@ -9,6 +9,7 @@ Tips and patterns for getting more value out of Claude Code on this project.
 Claude Code can run agents in the background in an isolated git worktree while you continue working. This is useful for well-defined tasks that don't depend on your current work.
 
 Example use cases for this project:
+
 - Running `remove-mcp` (a pure deletion across known files) in the background while working on something else
 - Generating infrastructure config files (smb.conf, cloud-init YAML) while reviewing a spec
 - Running the full test suite in the background after a change
@@ -24,6 +25,7 @@ The worktree is automatically cleaned up if no changes are made. If changes are 
 The `CLAUDE.md` file is loaded into every session. Rules and conventions in it are followed consistently without needing to re-explain them. The current setup (spec format, phased planning, contract-first, test-before-implement) is well-configured.
 
 Things worth adding to CLAUDE.md if they come up repeatedly:
+
 - Patterns that Claude gets wrong more than once
 - Project-specific conventions (naming, file placement, etc.)
 - Anything you find yourself re-explaining across sessions
@@ -33,6 +35,7 @@ Things worth adding to CLAUDE.md if they come up repeatedly:
 ## Generate Config Artifacts, Not Just Prose
 
 For infrastructure work (Proxmox, Jellyfin, Samba, cloud-init), ask Claude to produce the actual config files rather than a checklist of steps. For example:
+
 - "Generate the smb.conf for sharing /media with guest read/write access"
 - "Write a cloud-init user-data file that installs Jellyfin and Samba on Debian"
 - "Write the Proxmox LXC config snippet to bind-mount /mnt/media"

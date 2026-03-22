@@ -1,12 +1,15 @@
 # IDE Formatting Spec
 
 ## Name
+
 - ide-formatting
 
 ## Checkpoint
+
 - ide-formatting
 
 ## Purpose
+
 Ensure VS Code format on save, `dotnet format`, and `npm run lint:fix` all produce identical output. Currently `.editorconfig` sets `end_of_line = crlf` globally, which conflicts with Prettier's `endOfLine: lf`. Fix the conflict and add VS Code workspace settings so the correct formatter runs automatically on save for each file type.
 
 ## Design
@@ -18,6 +21,7 @@ LF everywhere. The codebase targets Linux deployment and git should not be conve
 ### VS Code Settings
 
 `.vscode/settings.json` (new file) sets:
+
 - `"editor.formatOnSave": true`
 - Prettier as the default formatter for JS, TS, Vue, JSON, and MJS files
 - The C# extension as the default formatter for C# files
@@ -36,6 +40,7 @@ LF everywhere. The codebase targets Linux deployment and git should not be conve
 ### Contract
 
 Changes:
+
 - `.editorconfig` — change global `end_of_line` from `crlf` to `lf`; add overrides for JS/TS/Vue/MJS files with `indent_size = 2`
 - `.vscode/settings.json` — new file with formatter and format-on-save settings
 - `CraterClaw.Web/.prettierrc.json` — no change needed, already has `endOfLine: lf`
@@ -47,10 +52,11 @@ No automated tests. Manual verification only.
 ### Implement
 
 1. Update `.editorconfig`:
-   - Change global `end_of_line = crlf` to `end_of_line = lf`
-   - Add section for web files (`*.{js,ts,mjs,vue}`) with `indent_size = 2`
+    - Change global `end_of_line = crlf` to `end_of_line = lf`
+    - Add section for web files (`*.{js,ts,mjs,vue}`) with `indent_size = 2`
 
 2. Create `.vscode/settings.json`:
+
 ```json
 {
     "editor.formatOnSave": true,
@@ -68,6 +74,7 @@ No automated tests. Manual verification only.
 ### README Sync
 
 Add a `## Formatting` section noting:
+
 - C#: `dotnet format .\CraterClaw.slnx`
 - Vue/TS: `npm run lint:fix` from `CraterClaw.Web`
 - VS Code formats on save automatically when the Prettier and C# extensions are installed

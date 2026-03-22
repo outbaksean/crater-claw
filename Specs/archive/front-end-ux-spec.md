@@ -1,15 +1,19 @@
 # Front-End UX Spec
 
 ## Name
+
 - Front-End UX
 
 ## Checkpoint
+
 - front-end-ux
 
 ## Depends On
+
 - vue-frontend (checkpoint 12)
 
 ## Purpose
+
 Redesign the Vue frontend from a plain functional layout into a cohesive, refined dark workspace. The aesthetic is a unified monospace control panel — precise, structured, and unmistakably personal.
 
 ## Design System
@@ -23,9 +27,12 @@ Every element uses a single monospace typeface (DM Mono) giving the interface a 
 Load via `index.html` `<head>`:
 
 ```html
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@800&display=swap"
+    rel="stylesheet"
+/>
 ```
 
 - **DM Mono** — used for all UI text, labels, inputs, responses, and metadata.
@@ -37,36 +44,42 @@ Defined on `:root` in `App.vue` `<style>`:
 
 ```css
 :root {
-  --bg:            #090d16;
-  --surface:       #0f1624;
-  --surface-raised:#16202f;
-  --border:        #1e2d45;
-  --border-active: #3d6abf;
-  --text:          #c4d4eb;
-  --text-dim:      #4e6480;
-  --text-placeholder: #2e4260;
-  --accent:        #4f8ef7;
-  --accent-hover:  #6fa5ff;
-  --ok:            #3ecf78;
-  --err:           #e05555;
-  --font-ui:       'DM Mono', monospace;
-  --font-display:  'Syne', sans-serif;
-  --radius:        6px;
-  --transition:    140ms ease;
+    --bg: #090d16;
+    --surface: #0f1624;
+    --surface-raised: #16202f;
+    --border: #1e2d45;
+    --border-active: #3d6abf;
+    --text: #c4d4eb;
+    --text-dim: #4e6480;
+    --text-placeholder: #2e4260;
+    --accent: #4f8ef7;
+    --accent-hover: #6fa5ff;
+    --ok: #3ecf78;
+    --err: #e05555;
+    --font-ui: "DM Mono", monospace;
+    --font-display: "Syne", sans-serif;
+    --radius: 6px;
+    --transition: 140ms ease;
 }
 ```
 
 ### Global Resets
 
 ```css
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-ui);
-  font-size: 13px;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
 }
 ```
 
@@ -80,17 +93,17 @@ Each workflow section is a panel:
 
 ```css
 .panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
 }
 .panel-label {
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 12px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
 }
 ```
 
@@ -131,6 +144,7 @@ Each workflow section is a panel:
 **Workspace column**: `max-width: 680px`, `margin: 0 auto`, `padding: 0 24px 48px`, sections separated by `14px` gap using `display: flex; flex-direction: column; gap: 14px`.
 
 **Provider list items**:
+
 - Each `<li>` has `padding: 8px 12px`, `border-radius: var(--radius)`, `cursor: pointer`, `border-left: 3px solid transparent`, `transition: background var(--transition), border-color var(--transition)`.
 - Hover: `background: var(--surface-raised)`.
 - Selected: `border-left-color: var(--accent)`, `background: var(--surface-raised)`.
@@ -178,6 +192,7 @@ Restyle `InteractiveChat.vue`, `ProfileSelector.vue`, and `AgenticPanel.vue` to 
 **InteractiveChat**
 
 Message history area:
+
 - `min-height: 200px`, `max-height: 480px`, `overflow-y: auto`.
 - Each message is a row with a role label column and content column.
 - Role label: `width: 72px`, `flex-shrink: 0`, `color: var(--text-dim)`, `font-size: 11px`, `text-transform: uppercase`, `letter-spacing: 0.08em`, `padding-top: 2px`. Value is `"you"` or `"assistant"`.
@@ -186,6 +201,7 @@ Message history area:
 - Empty state: `"no messages"` in `var(--text-dim)`, centered vertically and horizontally within the history area.
 
 Input bar (pinned to bottom of component):
+
 - `display: flex`, `gap: 8px`, `padding-top: 12px`, `border-top: 1px solid var(--border)`.
 - `<textarea>` (single row, expands to 3 rows max): `background: var(--surface-raised)`, `border: 1px solid var(--border)`, `border-radius: var(--radius)`, `color: var(--text)`, `font-family: var(--font-ui)`, `font-size: 13px`, `padding: 8px 12px`, `resize: none`, `flex: 1`. Focus: `border-color: var(--border-active)`, `outline: none`.
 - Send button: `background: var(--accent)`, `color: #fff`, `border: none`, `border-radius: var(--radius)`, `padding: 8px 16px`, `font-family: var(--font-ui)`, `font-size: 12px`, `cursor: pointer`, `letter-spacing: 0.04em`. Hover: `background: var(--accent-hover)`. Disabled: `opacity: 0.4`, `cursor: not-allowed`.
@@ -194,16 +210,16 @@ Input bar (pinned to bottom of component):
 **ProfileSelector**
 
 - Remove the `<ol>` pattern. Render profiles as a vertical list of selectable rows (same selection pattern as providers/models).
-- Each row: index number, profile name, description on the same line separated by ` — `, description in `var(--text-dim)`.
+- Each row: index number, profile name, description on the same line separated by `—`, description in `var(--text-dim)`.
 - Selected row has the left-border accent.
 
 **AgenticPanel**
 
 - Task input: same `<textarea>` + button pattern as InteractiveChat. Button label `"run"`. Submit on `Enter` (no Shift).
 - Result area (shown after execution):
-  - Finish reason: `font-size: 11px`, `text-transform: uppercase`, `letter-spacing: 0.08em`, `color: var(--text-dim)`, `margin-bottom: 8px`.
-  - Tools invoked: rendered as a single line of comma-separated names in `var(--accent)` font size `11px`. If none, omit entirely.
-  - Response content: `background: var(--surface-raised)`, `border: 1px solid var(--border)`, `border-radius: var(--radius)`, `padding: 16px`, `white-space: pre-wrap`, `font-size: 13px`, `line-height: 1.7`, `max-height: 480px`, `overflow-y: auto`.
+    - Finish reason: `font-size: 11px`, `text-transform: uppercase`, `letter-spacing: 0.08em`, `color: var(--text-dim)`, `margin-bottom: 8px`.
+    - Tools invoked: rendered as a single line of comma-separated names in `var(--accent)` font size `11px`. If none, omit entirely.
+    - Response content: `background: var(--surface-raised)`, `border: 1px solid var(--border)`, `border-radius: var(--radius)`, `padding: 16px`, `white-space: pre-wrap`, `font-size: 13px`, `line-height: 1.7`, `max-height: 480px`, `overflow-y: auto`.
 
 #### Tests
 
@@ -242,8 +258,15 @@ Add CSS transitions for panel reveal, selection state changes, and loading feedb
 **Panel reveal**: Sections that appear conditionally (`v-if`) use Vue's `<Transition>` with `name="panel"`:
 
 ```css
-.panel-enter-active { transition: opacity 180ms ease, transform 180ms ease; }
-.panel-enter-from   { opacity: 0; transform: translateY(6px); }
+.panel-enter-active {
+    transition:
+        opacity 180ms ease,
+        transform 180ms ease;
+}
+.panel-enter-from {
+    opacity: 0;
+    transform: translateY(6px);
+}
 ```
 
 **Loading state in InteractiveChat**: while `loading` is true, show a pulsing `"..."` line in the message history in place of the pending assistant message. Three dots animate opacity in sequence using CSS `@keyframes`.

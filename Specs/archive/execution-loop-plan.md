@@ -16,19 +16,23 @@
 ## Phase 1: Contracts, Service Implementation, and Tests
 
 ### Status
+
 - Done
 
 ### Goal
+
 - Define the agentic contract types, implement `SemanticKernelAgenticExecutionService`, register in DI, and cover with unit tests.
 
 ### Contract
 
 **`AgenticFinishReason`** (public enum, `CraterClaw.Core`):
+
 ```csharp
 public enum AgenticFinishReason { Completed, IterationLimitReached }
 ```
 
 **`AgenticRequest`** (public record, `CraterClaw.Core`):
+
 ```csharp
 public sealed record AgenticRequest(
     string ModelName,
@@ -38,6 +42,7 @@ public sealed record AgenticRequest(
 ```
 
 **`AgenticResponse`** (public record, `CraterClaw.Core`):
+
 ```csharp
 public sealed record AgenticResponse(
     string Content,
@@ -46,6 +51,7 @@ public sealed record AgenticResponse(
 ```
 
 **`IAgenticExecutionService`** (public interface, `CraterClaw.Core`):
+
 ```csharp
 public interface IAgenticExecutionService
 {
@@ -59,32 +65,35 @@ public interface IAgenticExecutionService
 ### Tasks
 
 **`CraterClaw.Core`**
+
 - Add `AgenticFinishReason.cs`.
 - Add `AgenticRequest.cs`.
 - Add `AgenticResponse.cs`.
 - Add `IAgenticExecutionService.cs`.
 - Add `SemanticKernelAgenticExecutionService.cs` (internal, sealed):
-  - Constructor: `ILogger<SemanticKernelAgenticExecutionService> logger`
-  - `ExecuteAsync` implementation:
-    1. Build kernel: `Kernel.CreateBuilder().AddOllamaChatCompletion(request.ModelName, new Uri(endpoint.BaseUrl)).Build()`
-    2. Register plugins: `foreach (var p in request.Plugins) kernel.Plugins.AddFromObject(p)`
-    3. Construct `ChatHistory`, add user message
-    4. Build `PromptExecutionSettings` with `FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()` and `MaxAutoInvokeAttempts = request.MaxIterations` (confirm property name at implementation time)
-    5. Call `kernel.GetRequiredService<IChatCompletionService>().GetChatMessageContentsAsync(chatHistory, settings, kernel, cancellationToken)`
-    6. Collect tool names: `chatHistory.Where(m => m.Role == AuthorRole.Tool).SelectMany(m => m.Items.OfType<FunctionResultContent>()).Select(f => f.FunctionName)`
-    7. Detect iteration limit: `messages.LastOrDefault()?.Items.Any(i => i is FunctionCallContent) ?? false`
-    8. Extract content: last assistant message's `.Content`
-    9. Log each tool invoked at Information; log finish reason at Information
-    10. Return `AgenticResponse`
+    - Constructor: `ILogger<SemanticKernelAgenticExecutionService> logger`
+    - `ExecuteAsync` implementation:
+        1. Build kernel: `Kernel.CreateBuilder().AddOllamaChatCompletion(request.ModelName, new Uri(endpoint.BaseUrl)).Build()`
+        2. Register plugins: `foreach (var p in request.Plugins) kernel.Plugins.AddFromObject(p)`
+        3. Construct `ChatHistory`, add user message
+        4. Build `PromptExecutionSettings` with `FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()` and `MaxAutoInvokeAttempts = request.MaxIterations` (confirm property name at implementation time)
+        5. Call `kernel.GetRequiredService<IChatCompletionService>().GetChatMessageContentsAsync(chatHistory, settings, kernel, cancellationToken)`
+        6. Collect tool names: `chatHistory.Where(m => m.Role == AuthorRole.Tool).SelectMany(m => m.Items.OfType<FunctionResultContent>()).Select(f => f.FunctionName)`
+        7. Detect iteration limit: `messages.LastOrDefault()?.Items.Any(i => i is FunctionCallContent) ?? false`
+        8. Extract content: last assistant message's `.Content`
+        9. Log each tool invoked at Information; log finish reason at Information
+        10. Return `AgenticResponse`
 - Update `ServiceCollectionExtensions.AddCraterClawCore()`:
-  - `services.AddTransient<IAgenticExecutionService, SemanticKernelAgenticExecutionService>()`
+    - `services.AddTransient<IAgenticExecutionService, SemanticKernelAgenticExecutionService>()`
 
 **`CraterClaw.Core.Tests`**
+
 - Add `SemanticKernelAgenticExecutionServiceTests.cs`.
 
 ### Fake IChatCompletionService
 
 Tests inject a fake via `KernelBuilder`:
+
 ```csharp
 private static Kernel BuildKernelWithFake(params ChatMessageContent[] responses)
 {
@@ -102,12 +111,14 @@ private static Kernel BuildKernelWithFake(params ChatMessageContent[] responses)
 ### Tests
 
 `SemanticKernelAgenticExecutionServiceTests`:
+
 - `ExecuteAsync_ReturnsContent_WhenAgentRespondsDirectly`: fake returns one plain-text assistant message; assert `response.Content` matches and `FinishReason == Completed`.
 - `ExecuteAsync_ReturnsEmptyToolsInvoked_WhenNoToolsUsed`: fake returns plain text; assert `response.ToolsInvoked` is empty.
 - `ExecuteAsync_ReturnsIterationLimitReached_WhenLastMessageHasFunctionCall`: fake returns a message containing a `FunctionCallContent` item; assert `FinishReason == IterationLimitReached`.
 - `ExecuteAsync_TracksToolsInvoked_WhenFunctionIsCalledAndReturned`: register a real in-process kernel function (`KernelFunctionFactory.CreateFromMethod`) that returns a fixed string; fake returns a function-call message then a plain-text message; assert `response.ToolsInvoked` contains the function name.
 
 ### Manual Verification
+
 - `dotnet build CraterClaw.slnx` succeeds.
 - `dotnet test CraterClaw.slnx --no-build` passes with new tests included.
 
@@ -116,32 +127,37 @@ private static Kernel BuildKernelWithFake(params ChatMessageContent[] responses)
 ## Phase 2: Console Wiring
 
 ### Status
+
 - Done
 
 ### Goal
+
 - After profile selection and function listing, prompt the user for a task and run the agentic loop.
 
 ### Tasks
 
 **`CraterClaw.Console/Program.cs`**
+
 - Resolve `IAgenticExecutionService` from DI.
 - After the plugin function listing block, add:
-  - If a model was selected (i.e. `selectedModelName` is not null):
-    - `Console.Write("Enter task prompt (leave blank to skip): ")`
-    - Read input; skip if blank
-    - Build `plugins`: if `permitted.Count > 0` add `qBitTorrentPlugin` to the list, else empty list
-    - Build `AgenticRequest(selectedModelName, prompt, plugins, MaxIterations: 10)`
-    - Call `agenticExecutionService.ExecuteAsync(endpoint, request, CancellationToken.None)`
-    - For each tool in `response.ToolsInvoked`: `Console.WriteLine($"Tool: {tool}")`
-    - `Console.WriteLine("Response:")` then `Console.WriteLine(response.Content)`
-    - `Console.WriteLine($"Tools invoked: {response.ToolsInvoked.Count}")`
-    - If `response.FinishReason == AgenticFinishReason.IterationLimitReached`: `Console.WriteLine("(iteration limit reached)")`
-    - Wrap in try/catch; print error and continue on failure
+    - If a model was selected (i.e. `selectedModelName` is not null):
+        - `Console.Write("Enter task prompt (leave blank to skip): ")`
+        - Read input; skip if blank
+        - Build `plugins`: if `permitted.Count > 0` add `qBitTorrentPlugin` to the list, else empty list
+        - Build `AgenticRequest(selectedModelName, prompt, plugins, MaxIterations: 10)`
+        - Call `agenticExecutionService.ExecuteAsync(endpoint, request, CancellationToken.None)`
+        - For each tool in `response.ToolsInvoked`: `Console.WriteLine($"Tool: {tool}")`
+        - `Console.WriteLine("Response:")` then `Console.WriteLine(response.Content)`
+        - `Console.WriteLine($"Tools invoked: {response.ToolsInvoked.Count}")`
+        - If `response.FinishReason == AgenticFinishReason.IterationLimitReached`: `Console.WriteLine("(iteration limit reached)")`
+        - Wrap in try/catch; print error and continue on failure
 
 ### Tests
+
 - No new tests required.
 
 ### Manual Verification Plan
+
 - Prerequisites: Ollama running with a tool-use capable model (e.g. `qwen2.5:7b`); qBitTorrent running with WebUI enabled; `qbittorrent:*` credentials in user secrets.
 - Run the console, select the Ollama endpoint, select a compatible model, select the `qbittorrent-manager` profile.
 - Enter a task prompt such as `List my active torrents`.
@@ -153,6 +169,7 @@ private static Kernel BuildKernelWithFake(params ChatMessageContent[] responses)
 ---
 
 ## Completion Criteria
+
 - Both phase statuses are marked Done.
 - All automated tests pass.
 - Manual verification confirms end-to-end tool use against qBitTorrent.

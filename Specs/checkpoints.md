@@ -117,16 +117,19 @@ Added `OllamaProviderStatusService` tests: reachable on HTTP 200, unreachable on
 ## Planned
 
 ### behavior-secrets
+
 **Type: Code**
 
 Audit behavior definitions for sensitive data — system prompts may reference personal details, internal instructions, or other content that should not be committed. Determine whether behavior definitions (or parts of them) should be stored in user secrets or environment variables rather than craterclaw.json. Implement whatever secret handling approach is appropriate and document the pattern for future behaviors.
 
 ### ollama-lan
+
 **Type: Infrastructure**
 
 Make Ollama accessible on the LAN. Currently Ollama only runs on the host machine and is not reachable from other devices on the network. Needs investigation — the right approach depends on the host OS, network config, and whether Ollama should be exposed directly or proxied.
 
 ### media-server
+
 **Type: Infrastructure**
 
 Set up Jellyfin in a Proxmox LXC on the minipc, with the external hard drive as the media library storage. Jellyfin is free, fully self-hosted, and has a REST API for future CraterClaw integration. DLNA is built in (replaces existing DLNA setup). SMB share on the LXC provides direct file access for CraterClaw's media library plugin.
@@ -136,89 +139,105 @@ Infrastructure: minipc running Proxmox, external hard drive attached to the mini
 See `Specs/media-server-spec.md` for setup details.
 
 ### media-library-config
+
 **Type: Code**
 
 Add a `mediaLibrary` configuration section to `craterclaw.json` defining the UNC path to the media library root and a named map of category directories (initially just `movies`). Bind to a new options type with validation. No tools yet — config and options types only. FTP config is a separate checkpoint.
 Depends on: media-server
 
 ### media-library-tool
+
 **Type: Code**
 
 SK kernel plugin that operates on the configured local media library via the UNC path. Functions: list files in a category directory, check whether a title already exists anywhere in the library, move a downloaded file into the correct category directory. Files are placed flat inside the category directory. Depends on: media-library-config.
 
 ### ftp-client-tool
+
 **Type: Code**
 
 SK kernel plugin for transferring files from a remote FTP server to the local media library. Functions: list files in a remote directory, download a file from a remote path to a local category directory. Uses the configured FTP credentials. Depends on: media-library-config.
 
 ### radarr-sonarr-setup
+
 **Type: Infrastructure**
 
 Set up Radarr and Sonarr alongside the existing qBitTorrent setup. Both pointed at qBitTorrent as the download client and at the media library directories as their root folders. Radarr handles movies, Sonarr handles TV. This is an infrastructure checkpoint — no CraterClaw code. The arr stack handles the automated 80% case (monitored titles); CraterClaw handles the manual 20% case via the media-manual behavior.
 
 ### radarr-plugin
+
 **Type: Code**
 
 SK kernel plugin for the Radarr REST API. Functions: list movies in the library, list the download queue, search for a movie by title, add a movie to the wanted list, get the status of a movie (missing, queued, downloaded). Requires Radarr base URL and API key in config.
 Depends on: radarr-sonarr-setup
 
 ### sonarr-plugin
+
 **Type: Code**
 
 SK kernel plugin for the Sonarr REST API. Functions: list series in the library, list the download queue, search for a series by title, add a series to the wanted list, get episode status. Requires Sonarr base URL and API key in config.
 Depends on: radarr-sonarr-setup
 
 ### media-supervised-behavior
+
 **Type: Code**
 
 Behavior profile using Radarr, Sonarr, Jellyfin, and qBitTorrent plugins together. The AI provides a natural language interface to the arr stack: what's missing, what's downloading, what stalled, trigger searches, check queue health. No file operations — the arr stack handles everything mechanical.
 Depends on: radarr-plugin, sonarr-plugin, jellyfin-api-plugin, qbittorrent-plugin
 
 ### media-manual-behavior
+
 **Type: Code**
 
 Behavior profile using qBitTorrent, FTP, and media library plugins together. The AI automates the manual workflow: check completed torrents, transfer files from the remote seedbox via FTP, place them in the correct library directory, verify they landed. For content outside the arr stack — obscure releases, manual grabs, one-off transfers.
 Depends on: media-library-tool, ftp-client-tool, qbittorrent-plugin, jellyfin-api-plugin
 
 ### agentic-error-recovery
+
 **Type: Research / Code**
 
 Investigate and address error handling and recovery patterns across the agentic loop and plugins. To be scoped when the media plugins exist and real failure modes are known.
 
 ### jellyfin-api-plugin
+
 **Type: Code**
 
 SK kernel plugin for the Jellyfin REST API. Functions: trigger a library scan for a specific library, check whether a title exists in the library by name. Useful for the AI to verify a file was picked up after being moved into the library. Requires Jellyfin base URL and API key in config.
 Depends on: media-server, media-library-config
 
 ### lxc-terraform
+
 **Type: Infrastructure**
 
 Terraform module and cloud-init config to provision the Jellyfin LXC on Proxmox, replacing the manual setup from `media-server`. Includes: container resource definitions, bind mount for the external drive, network config, and cloud-init for Jellyfin + Samba installation.
 Depends on: media-server
 
 ### thinking-mode-ollama
+
 **Type: Code**
 
 Enable thinking mode by using OllamaPromptExecutionSettings instead of PromptExecutionSettings in SemanticKernelAgenticExecutionService and include "think" true in AdditionalProperties. Thinking should be toggleable by the user.
 
 ### web-agentic-streaming
+
 **Type: Code**
 
 Add streaming support to the agentic execution path in the API and web frontend. Currently streaming only works in the console harness via `StreamChunk`. The API returns the full response only after completion, leaving the web UI blank for the duration of long tasks. Requires a streaming endpoint (SSE or chunked transfer) and a Vue composable update to consume it.
 Depends on: vue-frontend
 
 ### web-ux-refactor-2
+
 **Type: Code**
 
 Refactor the web ux with better placement of providers, models, behavior, chat boxes
 
 ### investigate-child-agents
+
 **Type: Research**
 
 Investigate allowing the model to spawn subagents. The output will either be checkpoints or a notes file
 
 ### linux-aliases
+
 **Type: Code**
 
 Bash/zsh equivalent of the powershell-aliases module. Shell function file installed via install.sh to ~/.local/share/craterclaw/, sourced from .bashrc/.zshrc. Same craterclaw subcommand interface as the PowerShell module.
