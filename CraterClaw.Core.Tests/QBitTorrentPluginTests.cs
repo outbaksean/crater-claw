@@ -51,7 +51,7 @@ public sealed class QBitTorrentPluginTests
     [Fact]
     public async Task ListTorrentsAsync_ReturnsJson_WhenAuthenticated()
     {
-        const string json = """[{"name":"test.torrent","state":"downloading","added_on":1700000000}]""";
+        const string json = """[{"name":"test.torrent","state":"downloading","added_on":1700000000,"amount_left":500000,"priority":1,"size":1000000,"category":"movies"}]""";
         var plugin = CreatePlugin(QueuedResponses(LoginOkResponse(), JsonResponse(json)));
 
         var result = await plugin.ListTorrentsAsync();
@@ -59,6 +59,61 @@ public sealed class QBitTorrentPluginTests
         Assert.DoesNotContain("Error:", result);
         Assert.Contains("test.torrent", result);
         Assert.Contains("downloading", result);
+        Assert.Contains("amount_left", result);
+        Assert.Contains("priority", result);
+        Assert.Contains("size", result);
+        Assert.Contains("category", result);
+    }
+
+    [Fact]
+    public async Task ListTorrentsAsync_ProjectsAllFields()
+    {
+        const string json = """[{"name":"film.mkv","state":"seeding","added_on":1700000001,"amount_left":0,"priority":2,"size":5000000000,"category":"movies"}]""";
+        var plugin = CreatePlugin(QueuedResponses(LoginOkResponse(), JsonResponse(json)));
+
+        var result = await plugin.ListTorrentsAsync();
+
+        var parsed = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement[]>(result);
+        var t = parsed![0];
+        Assert.Equal("film.mkv", t.GetProperty("name").GetString());
+        Assert.Equal("seeding", t.GetProperty("state").GetString());
+        Assert.Equal("2023-11-14 22:13", t.GetProperty("added_on").GetString());
+        Assert.Equal("0 B", t.GetProperty("amount_left").GetString());
+        Assert.Equal(2L, t.GetProperty("priority").GetInt64());
+        Assert.Equal("4.7 GB", t.GetProperty("size").GetString());
+        Assert.Equal("movies", t.GetProperty("category").GetString());
+    }
+
+    [Theory]
+    [InlineData(2_147_483_648L, "2.0 GB")]
+    [InlineData(5_242_880L,     "5.0 MB")]
+    [InlineData(2_048L,         "2.0 KB")]
+    [InlineData(512L,           "512 B")]
+    public async Task ListTorrentsAsync_FormatsBytes(long bytes, string expected)
+    {
+        var json = $$"""[{"name":"t","state":"downloading","added_on":1700000000,"amount_left":{{bytes}},"priority":1,"size":{{bytes}},"category":""}]""";
+
+        var plugin = CreatePlugin(QueuedResponses(LoginOkResponse(), JsonResponse(json)));
+
+        var result = await plugin.ListTorrentsAsync();
+
+        var parsed = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement[]>(result);
+        Assert.Equal(expected, parsed![0].GetProperty("size").GetString());
+        Assert.Equal(expected, parsed[0].GetProperty("amount_left").GetString());
+    }
+
+    [Fact]
+    public async Task ListTorrentsAsync_HandlesAbsentFields()
+    {
+        const string json = """[{"name":"partial.torrent"}]""";
+        var plugin = CreatePlugin(QueuedResponses(LoginOkResponse(), JsonResponse(json)));
+
+        var result = await plugin.ListTorrentsAsync();
+
+        Assert.DoesNotContain("Error:", result);
+        var parsed = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement[]>(result);
+        Assert.NotNull(parsed);
+        Assert.Equal("partial.torrent", parsed![0].GetProperty("name").GetString());
     }
 
     [Fact]

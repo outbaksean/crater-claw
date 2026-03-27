@@ -85,7 +85,7 @@ public sealed class QBitTorrentPlugin(
         return response;
     }
 
-    [KernelFunction, Description("List all torrents with name, hash, status, progress, and size.")]
+    [KernelFunction, Description("List all torrents. Returns a JSON array with fields: name, state, added_on (formatted date UTC), amount_left (human-readable size), priority, size (human-readable size), category.")]
     public async Task<string> ListTorrentsAsync(CancellationToken cancellationToken = default)
     {
         if (!IsConfigured) return "Error: qBitTorrent is not configured.";
@@ -101,7 +101,17 @@ public sealed class QBitTorrentPlugin(
             {
                 name = t?["name"]?.ToString(),
                 state = t?["state"]?.ToString(),
-                added_on = t?["added_on"]?.GetValue<long>()
+                added_on = t?["added_on"]?.GetValue<long>() is long ts
+                    ? DateTimeOffset.FromUnixTimeSeconds(ts).ToString("yyyy-MM-dd HH:mm")
+                    : null,
+                amount_left = t?["amount_left"]?.GetValue<long>() is long al
+                    ? FormatBytes(al)
+                    : null,
+                priority = t?["priority"]?.GetValue<long>(),
+                size = t?["size"]?.GetValue<long>() is long sz
+                    ? FormatBytes(sz)
+                    : null,
+                category = t?["category"]?.ToString()
             });
             return JsonSerializer.Serialize(trimmed);
         }
@@ -111,6 +121,14 @@ public sealed class QBitTorrentPlugin(
             return $"Error: {ex.Message}";
         }
     }
+
+    private static string FormatBytes(long bytes) => bytes switch
+    {
+        >= 1_073_741_824 => $"{bytes / 1_073_741_824.0:F1} GB",
+        >= 1_048_576     => $"{bytes / 1_048_576.0:F1} MB",
+        >= 1_024         => $"{bytes / 1_024.0:F1} KB",
+        _                => $"{bytes} B"
+    };
 
     [KernelFunction, Description("Add a torrent from a magnet link or HTTP URL.")]
     public async Task<string> AddTorrentByUrlAsync(
@@ -337,7 +355,7 @@ public sealed class QBitTorrentPlugin(
 
     public static IReadOnlyList<(string Name, string Description)> GetFunctionDescriptions() =>
     [
-        ("ListTorrents", "List all torrents with name, hash, status, progress, and size."),
+        ("ListTorrents", "List all torrents. Returns a JSON array with fields: name, state, added_on (formatted date UTC), amount_left (human-readable size), priority, size (human-readable size), category."),
         ("AddTorrentByUrl", "Add a torrent from a magnet link or HTTP URL."),
         ("PauseTorrent", "Pause a torrent by its hash."),
         ("ResumeTorrent", "Resume a paused torrent by its hash."),

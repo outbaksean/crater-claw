@@ -57,7 +57,7 @@
 ### Plugins
 
 - `QBitTorrentPlugin` — Semantic Kernel kernel plugin. Takes `QBitTorrentOptions` directly (not IOptions). Authenticates with the qBitTorrent WebUI using cookie-based login (`/api/v2/auth/login`), caches the SID cookie, and re-authenticates on 403 responses. Kernel functions:
-    - `ListTorrents` — JSON array of all torrents (name, state, added_on).
+    - `ListTorrents` — JSON array of all torrents. Fields: name, state, added_on (formatted date UTC), amount_left (human-readable size), priority, size (human-readable size), category.
     - `AddTorrentByUrl` — adds a torrent from a magnet link or HTTP URL.
     - `PauseTorrent` — pauses a torrent by hash.
     - `ResumeTorrent` — resumes a torrent by hash.
