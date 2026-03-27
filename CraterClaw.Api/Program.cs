@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
+using CraterClaw.Api.Endpoints;
+using CraterClaw.Api.Services;
 using CraterClaw.Core;
-using Microsoft.Extensions.Options;
 using Serilog;
 
 var (filteredArgs, configFilePath) = ParseArgs(args, Path.Combine(AppContext.BaseDirectory, "craterclaw.json"));
@@ -77,6 +78,7 @@ if (aiEnabled)
 builder.Host.UseSerilog(logConfig.CreateLogger(), dispose: true);
 
 builder.Services.AddCraterClawCore(builder.Configuration);
+builder.Services.AddSingleton<IProviderResolver, ProviderResolver>();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddCors(options =>
@@ -87,126 +89,9 @@ var app = builder.Build();
 
 app.UseCors();
 
-app.MapGet("/api/providers", (IOptions<ProviderOptions> opts) =>
-{
-    var endpoints = opts.Value.Endpoints
-        .Select(kvp => new ProviderEndpointResponse(kvp.Key, kvp.Value.BaseUrl))
-        .ToList();
-    return Results.Ok(endpoints);
-});
-
-app.MapGet("/api/providers/{name}/status", async (
-    string name,
-    IOptions<ProviderOptions> opts,
-    IProviderStatusService statusService,
-    CancellationToken cancellationToken) =>
-{
-    if (!opts.Value.Endpoints.TryGetValue(name, out var endpointOpts))
-        return Results.NotFound();
-
-    var endpoint = new ProviderEndpoint(name, endpointOpts.BaseUrl);
-    var status = await statusService.CheckStatusAsync(endpoint, cancellationToken);
-    return Results.Ok(new ProviderStatusResponse(status.IsReachable, status.ErrorMessage));
-});
-
-app.MapGet("/api/providers/{name}/models", async (
-    string name,
-    IOptions<ProviderOptions> opts,
-    IModelListingService modelListingService,
-    CancellationToken cancellationToken) =>
-{
-    if (!opts.Value.Endpoints.TryGetValue(name, out var endpointOpts))
-        return Results.NotFound();
-
-    var endpoint = new ProviderEndpoint(name, endpointOpts.BaseUrl);
-    var models = await modelListingService.ListModelsAsync(endpoint, cancellationToken);
-    return Results.Ok(models.Select(m => new ModelApiItem(m.Name, m.SizeBytes, m.ModifiedAt)).ToList());
-});
-
-app.MapPost("/api/providers/{name}/execute", async (
-    string name,
-    ExecutionApiRequest request,
-    IOptions<ProviderOptions> opts,
-    IModelExecutionService executionService,
-    CancellationToken cancellationToken) =>
-{
-    if (!opts.Value.Endpoints.TryGetValue(name, out var endpointOpts))
-        return Results.NotFound();
-
-    var endpoint = new ProviderEndpoint(name, endpointOpts.BaseUrl);
-    var messages = request.Messages
-        .Select(m => new ConversationMessage(m.Role, m.Content))
-        .ToList();
-    var executionRequest = new ExecutionRequest(request.ModelName, messages, request.Temperature, request.MaxTokens);
-    var result = await executionService.ExecuteAsync(endpoint, executionRequest, cancellationToken);
-    return Results.Ok(new ExecutionApiResponse(result.Content, result.ModelName, result.FinishReason));
-});
-
-app.MapGet("/api/profiles", (IBehaviorProfileService profileService) =>
-{
-    var items = profileService.GetAll().Select(p => new BehaviorProfileApiItem(
-        p.Id, p.Name, p.Description, p.SystemPrompt,
-        p.PreferredProviderName, p.PreferredModelName,
-        p.Plugins.Select(b => new PluginBindingApiItem(b.Name, b.Tools)).ToList())).ToList();
-    return Results.Ok(items);
-});
-
-app.MapPost("/api/providers/{name}/agentic", async (
-    string name,
-    AgenticApiRequest request,
-    IOptions<ProviderOptions> opts,
-    IBehaviorProfileService profileService,
-    IAgenticExecutionService agenticService,
-    IPluginRegistry pluginRegistry,
-    CancellationToken cancellationToken) =>
-{
-    if (!opts.Value.Endpoints.TryGetValue(name, out var endpointOpts))
-        return Results.NotFound();
-
-    var profile = profileService.GetById(request.ProfileId);
-    if (profile is null)
-        return Results.BadRequest($"Profile '{request.ProfileId}' not found.");
-
-    var endpoint = new ProviderEndpoint(name, endpointOpts.BaseUrl);
-    var plugins = pluginRegistry.Resolve(profile.Plugins);
-
-    var agenticRequest = new AgenticRequest(
-        request.ModelName,
-        request.Prompt,
-        plugins,
-        request.MaxIterations ?? 10,
-        SystemPrompt: profile.SystemPrompt);
-
-    var result = await agenticService.ExecuteAsync(endpoint, agenticRequest, cancellationToken);
-    return Results.Ok(new AgenticApiResponse(result.Content, result.FinishReason, result.ToolsInvoked));
-});
+app.MapProviderEndpoints();
+app.MapProfileEndpoints();
 
 app.Run();
 
 public partial class Program { }
-
-internal sealed record ProviderEndpointResponse(string Name, string BaseUrl);
-internal sealed record ProviderStatusResponse(bool IsReachable, string? ErrorMessage);
-internal sealed record ModelApiItem(string Name, long SizeBytes, DateTimeOffset ModifiedAt);
-internal sealed record ExecutionApiRequest(
-    string ModelName,
-    IReadOnlyList<MessageApiItem> Messages,
-    double? Temperature = null,
-    int? MaxTokens = null);
-internal sealed record MessageApiItem(MessageRole Role, string Content);
-internal sealed record ExecutionApiResponse(string Content, string ModelName, FinishReason FinishReason);
-internal sealed record AgenticApiRequest(
-    string ModelName,
-    string Prompt,
-    string ProfileId,
-    int? MaxIterations = null);
-internal sealed record AgenticApiResponse(string Content, AgenticFinishReason FinishReason, IReadOnlyList<string> ToolsInvoked);
-internal sealed record PluginBindingApiItem(string Name, IReadOnlyList<string> Tools);
-internal sealed record BehaviorProfileApiItem(
-    string Id,
-    string Name,
-    string Description,
-    string SystemPrompt,
-    string? PreferredProviderName,
-    string? PreferredModelName,
-    IReadOnlyList<PluginBindingApiItem> Plugins);
