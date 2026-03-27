@@ -1,0 +1,302 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: "DM Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 14px;
+    background: #0f0f0f;
+    color: #d4d4d4;
+}
+
+.page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: #e8e8e8;
+    margin: 0 0 2rem 0;
+    text-transform: uppercase;
+}
+
+h2 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: #888;
+    text-transform: uppercase;
+    margin: 0 0 0.75rem 0;
+}
+
+.panel {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-left: 2px solid #2a2a2a;
+}
+
+ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: item;
+}
+
+ol li {
+    counter-increment: item;
+    display: flex;
+    align-items: baseline;
+    margin-bottom: 0.25rem;
+}
+
+ol li::before {
+    content: counter(item) ".";
+    color: #555;
+    min-width: 2rem;
+    font-size: 0.85rem;
+}
+
+.list-btn {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px;
+    text-align: left;
+    transition: color 0.1s;
+}
+
+.list-btn:hover {
+    color: #e8e8e8;
+}
+
+.list-btn.selected {
+    color: #e8e8e8;
+    border-left: 2px solid #5a9fd4;
+    padding-left: 0.4rem;
+}
+
+.profile-name {
+    display: block;
+}
+
+.profile-desc {
+    display: block;
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 0.1rem;
+}
+
+.status-row {
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.status-pill {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 2px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.status-pill.reachable {
+    background: #1a3a1a;
+    color: #5a9f5a;
+}
+
+.status-pill.unreachable {
+    background: #3a1a1a;
+    color: #9f5a5a;
+}
+
+.status-pill.loading {
+    background: #1a2a3a;
+    color: #5a7a9f;
+}
+
+.muted {
+    color: #555;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.error-msg {
+    color: #9f5a5a;
+    font-size: 0.85rem;
+    margin: 0.5rem 0 0 0;
+}
+
+.warning-msg {
+    color: #9f8a5a;
+    font-size: 0.85rem;
+    margin: 0.5rem 0 0 0;
+}
+
+.input-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+}
+
+textarea {
+    flex: 1;
+    background: #181818;
+    border: 1px solid #2a2a2a;
+    border-radius: 2px;
+    color: #d4d4d4;
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+    resize: vertical;
+    min-height: 4rem;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: #3a3a3a;
+}
+
+textarea:disabled {
+    opacity: 0.5;
+}
+
+button {
+    background: #1e1e1e;
+    border: 1px solid #2a2a2a;
+    border-radius: 2px;
+    color: #aaa;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 0.4rem 0.9rem;
+    white-space: nowrap;
+}
+
+button:hover:not(:disabled) {
+    color: #e8e8e8;
+    border-color: #3a3a3a;
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.conversation {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.message {
+    padding: 0.5rem 0.75rem;
+    border-radius: 2px;
+}
+
+.message.user {
+    background: #181818;
+    border-left: 2px solid #3a3a5a;
+}
+
+.message.assistant {
+    background: #141414;
+    border-left: 2px solid #2a2a2a;
+}
+
+.message .role {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: #555;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.3rem;
+}
+
+.message pre.content,
+pre.content {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: #d4d4d4;
+}
+
+.agentic-result {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #1e1e1e;
+}
+
+.tools-invoked {
+    margin-bottom: 0.75rem;
+}
+
+.tools-invoked ul {
+    list-style: none;
+    margin: 0.25rem 0 0 0;
+    padding: 0;
+}
+
+.tools-invoked ul li {
+    font-size: 0.85rem;
+    color: #888;
+    padding: 0.1rem 0;
+}
+
+.tools-invoked ul li::before {
+    content: "- ";
+    color: #555;
+}
+
+.finish-reason {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 0.75rem;
+}
+
+.label {
+    color: #555;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.loading-text {
+    padding: 2rem;
+    color: #555;
+    font-family: monospace;
+}
+
+#blazor-error-ui {
+    background: #3a1a1a;
+    border-top: 1px solid #5a2a2a;
+    bottom: 0;
+    color: #d4a0a0;
+    display: none;
+    font-size: 0.85rem;
+    left: 0;
+    padding: 0.75rem 1rem;
+    position: fixed;
+    right: 0;
+    z-index: 1000;
+}
+
+#blazor-error-ui .reload {
+    color: #9f5a5a;
+    margin-left: 0.5rem;
+}

@@ -1,0 +1,85 @@
+@namespace CraterClaw.Blazor.Components
+@inject CraterClawClient Client
+
+<div class="panel">
+    <h2>Agentic Task</h2>
+
+    <div class="input-row">
+        <textarea @bind="_prompt" @bind:event="oninput"
+                  @onkeydown="OnKeyDown"
+                  placeholder="Enter a task..."
+                  disabled="@_loading"
+                  rows="3"></textarea>
+        <button @onclick="SubmitAsync" disabled="@(_loading || string.IsNullOrWhiteSpace(_prompt))">
+            @(_loading ? "Running..." : "Run")
+        </button>
+    </div>
+
+    @if (_error is not null)
+    {
+        <p class="error-msg">@_error</p>
+    }
+
+    @if (_result is not null)
+    {
+        <div class="agentic-result">
+            @if (_result.ToolsInvoked.Length > 0)
+            {
+                <div class="tools-invoked">
+                    <span class="label">Tools invoked:</span>
+                    <ul>
+                        @foreach (var tool in _result.ToolsInvoked)
+                        {
+                            <li>@tool</li>
+                        }
+                    </ul>
+                </div>
+            }
+            <div class="finish-reason">
+                <span class="label">Finish reason:</span> @_result.FinishReason
+            </div>
+            <pre class="content">@_result.Content</pre>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string ProviderName { get; set; } = "";
+    [Parameter, EditorRequired] public string ModelName { get; set; } = "";
+    [Parameter, EditorRequired] public string ProfileId { get; set; } = "";
+
+    private string _prompt = "";
+    private bool _loading;
+    private string? _error;
+    private AgenticResponse? _result;
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey && !_loading && !string.IsNullOrWhiteSpace(_prompt))
+            await SubmitAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        var text = _prompt.Trim();
+        if (string.IsNullOrEmpty(text)) return;
+
+        _error = null;
+        _result = null;
+        _loading = true;
+
+        try
+        {
+            var request = new AgenticRequest(ModelName, text, ProfileId);
+            _result = await Client.PostAgenticAsync(ProviderName, request);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

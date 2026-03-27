@@ -1,0 +1,38 @@
+@namespace CraterClaw.Blazor.Components
+
+@if (Models.Count > 0 || Loading)
+{
+    <div class="panel">
+        <h2>Models</h2>
+        @if (Loading)
+        {
+            <p class="muted">Loading models...</p>
+        }
+        else if (Models.Count == 0)
+        {
+            <p class="muted">No models available.</p>
+        }
+        else
+        {
+            <ol>
+                @foreach (var model in Models)
+                {
+                    var isSelected = Selected?.Name == model.Name;
+                    <li>
+                        <button class="list-btn @(isSelected ? "selected" : "")"
+                                @onclick="() => OnModelSelected.InvokeAsync(model)">
+                            @model.Name
+                        </button>
+                    </li>
+                }
+            </ol>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<ModelItem> Models { get; set; } = [];
+    [Parameter] public ModelItem? Selected { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public EventCallback<ModelItem> OnModelSelected { get; set; }
+}

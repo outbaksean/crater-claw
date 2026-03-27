@@ -116,6 +116,13 @@ Added `OllamaProviderStatusService` tests: reachable on HTTP 200, unreachable on
 
 ## Planned
 
+### blazor-frontend
+
+**Type: Code**
+
+Blazor WebAssembly frontend (`CraterClaw.Blazor`) consuming the Web API. Mirrors the Vue frontend flows: provider selection and status, model listing, interactive chat, behavior profile selection, and agentic task execution.
+Depends on: web-api (checkpoint 11)
+
 ### behavior-secrets
 
 **Type: Code**

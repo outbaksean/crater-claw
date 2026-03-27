@@ -1,0 +1,40 @@
+@namespace CraterClaw.Blazor.Components
+
+<div class="panel">
+    <h2>Behavior Profile</h2>
+    @if (Profiles.Count == 0)
+    {
+        <p class="muted">No profiles configured.</p>
+    }
+    else
+    {
+        <ol>
+            @foreach (var profile in Profiles)
+            {
+                var isSelected = Selected?.Id == profile.Id;
+                <li>
+                    <button class="list-btn @(isSelected ? "selected" : "")"
+                            @onclick="() => OnProfileSelected.InvokeAsync(profile)">
+                        <span class="profile-name">@profile.Name</span>
+                        @if (!string.IsNullOrEmpty(profile.Description))
+                        {
+                            <span class="profile-desc">@profile.Description</span>
+                        }
+                    </button>
+                </li>
+            }
+        </ol>
+    }
+
+    @if (Warning is not null)
+    {
+        <p class="warning-msg">@Warning</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<BehaviorProfile> Profiles { get; set; } = [];
+    [Parameter] public BehaviorProfile? Selected { get; set; }
+    [Parameter] public string? Warning { get; set; }
+    [Parameter] public EventCallback<BehaviorProfile> OnProfileSelected { get; set; }
+}

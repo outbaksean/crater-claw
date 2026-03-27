@@ -1,0 +1,151 @@
+@page "/"
+@inject CraterClawClient Client
+
+<h1>CraterClaw</h1>
+
+@if (_loadError is not null)
+{
+    <p class="error-msg">Failed to load configuration: @_loadError</p>
+}
+
+<ProviderPanel Providers="_providers"
+               Selected="_selectedProvider"
+               Status="_providerStatus"
+               StatusLoading="_statusLoading"
+               OnProviderSelected="SelectProviderAsync" />
+
+<ModelPanel Models="_models"
+            Selected="_selectedModel"
+            Loading="_modelsLoading"
+            OnModelSelected="SelectModel" />
+
+@if (_selectedProvider is not null && _selectedModel is not null)
+{
+    <ProfileSelector Profiles="_profiles"
+                     Selected="_selectedProfile"
+                     Warning="_profileWarning"
+                     OnProfileSelected="SelectProfile" />
+
+    <InteractiveChat ProviderName="_selectedProvider.Name"
+                     ModelName="_selectedModel.Name" />
+
+    @if (_selectedProfile is not null)
+    {
+        <AgenticPanel ProviderName="_selectedProvider.Name"
+                      ModelName="_selectedModel.Name"
+                      ProfileId="_selectedProfile.Id" />
+    }
+}
+
+@code {
+    private List<ProviderEndpoint> _providers = [];
+    private ProviderEndpoint? _selectedProvider;
+    private ProviderStatus? _providerStatus;
+    private bool _statusLoading;
+
+    private List<ModelItem> _models = [];
+    private ModelItem? _selectedModel;
+    private bool _modelsLoading;
+
+    private List<BehaviorProfile> _profiles = [];
+    private BehaviorProfile? _selectedProfile;
+    private string? _profileWarning;
+    private string? _pendingPreferredModel;
+
+    private string? _loadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var providersTask = Client.GetProvidersAsync();
+            var profilesTask = Client.GetProfilesAsync();
+            await Task.WhenAll(providersTask, profilesTask);
+            _providers = providersTask.Result;
+            _profiles = profilesTask.Result;
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+    }
+
+    private async Task SelectProviderAsync(ProviderEndpoint provider)
+    {
+        _selectedProvider = provider;
+        _selectedModel = null;
+        _providerStatus = null;
+        _models = [];
+        _statusLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _providerStatus = await Client.GetProviderStatusAsync(provider.Name);
+        }
+        catch (Exception ex)
+        {
+            _providerStatus = new ProviderStatus(false, ex.Message);
+        }
+        _statusLoading = false;
+
+        if (_providerStatus.IsReachable)
+        {
+            _modelsLoading = true;
+            StateHasChanged();
+            try
+            {
+                _models = await Client.GetModelsAsync(provider.Name);
+            }
+            catch (Exception ex)
+            {
+                _loadError = $"Failed to load models: {ex.Message}";
+            }
+            _modelsLoading = false;
+            ApplyPendingModel();
+        }
+
+        StateHasChanged();
+    }
+
+    private void SelectModel(ModelItem model)
+    {
+        _selectedModel = model;
+    }
+
+    private void SelectProfile(BehaviorProfile profile)
+    {
+        _selectedProfile = profile;
+        _profileWarning = null;
+        _pendingPreferredModel = profile.PreferredModelName;
+
+        if (profile.PreferredProviderName is not null)
+        {
+            var preferred = _providers.FirstOrDefault(p => p.Name == profile.PreferredProviderName);
+            if (preferred is not null)
+            {
+                _ = SelectProviderAsync(preferred);
+                return;
+            }
+            _profileWarning = $"Preferred provider '{profile.PreferredProviderName}' is not available.";
+        }
+
+        ApplyPendingModel();
+    }
+
+    private void ApplyPendingModel()
+    {
+        if (_pendingPreferredModel is null) return;
+        var model = _models.FirstOrDefault(m => m.Name == _pendingPreferredModel);
+        if (model is not null)
+        {
+            _selectedModel = model;
+        }
+        else if (_models.Count > 0)
+        {
+            var warn = $"Preferred model '{_pendingPreferredModel}' is not available.";
+            _profileWarning = _profileWarning is null ? warn : $"{_profileWarning} {warn}";
+        }
+        _pendingPreferredModel = null;
+    }
+}

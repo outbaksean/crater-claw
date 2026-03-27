@@ -1,0 +1,78 @@
+@namespace CraterClaw.Blazor.Components
+@inject CraterClawClient Client
+
+<div class="panel">
+    <h2>Chat</h2>
+
+    @if (_conversation.Count > 0)
+    {
+        <div class="conversation">
+            @foreach (var msg in _conversation)
+            {
+                <div class="message @msg.Role.ToLowerInvariant()">
+                    <span class="role">@msg.Role</span>
+                    <pre class="content">@msg.Content</pre>
+                </div>
+            }
+        </div>
+    }
+
+    @if (_error is not null)
+    {
+        <p class="error-msg">@_error</p>
+    }
+
+    <div class="input-row">
+        <textarea @bind="_input" @bind:event="oninput"
+                  @onkeydown="OnKeyDown"
+                  placeholder="Enter a message..."
+                  disabled="@_loading"
+                  rows="3"></textarea>
+        <button @onclick="SubmitAsync" disabled="@(_loading || string.IsNullOrWhiteSpace(_input))">
+            @(_loading ? "Sending..." : "Send")
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string ProviderName { get; set; } = "";
+    [Parameter, EditorRequired] public string ModelName { get; set; } = "";
+
+    private readonly List<MessageItem> _conversation = [];
+    private string _input = "";
+    private bool _loading;
+    private string? _error;
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey && !_loading && !string.IsNullOrWhiteSpace(_input))
+            await SubmitAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        var text = _input.Trim();
+        if (string.IsNullOrEmpty(text)) return;
+
+        _input = "";
+        _error = null;
+        _loading = true;
+        _conversation.Add(new MessageItem("User", text));
+
+        try
+        {
+            var request = new ExecutionRequest(ModelName, [.. _conversation]);
+            var result = await Client.PostExecuteAsync(ProviderName, request);
+            _conversation.Add(new MessageItem("Assistant", result.Content));
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _conversation.RemoveAt(_conversation.Count - 1);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

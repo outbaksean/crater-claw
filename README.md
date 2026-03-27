@@ -15,6 +15,8 @@ The console harness supports:
 - Plugin function listing: after selecting a profile, the console displays the available kernel functions by name and description
 - Agentic task execution: after selecting a profile and model, enter a task prompt to run the SK agentic loop with the selected profile's plugins; tool invocations and the final response are displayed
 
+The Blazor frontend supports the same flows as the Vue frontend (see below).
+
 The Vue frontend supports:
 
 - Provider list with reachability status indicator
@@ -47,8 +49,10 @@ dotnet --version
 - `CraterClaw.Console`: console harness for manually exercising library workflows
 - `CraterClaw.Api`: ASP.NET Core minimal API exposing library workflows over HTTP
 - `CraterClaw.Web`: Vue 3 TypeScript frontend consuming the API
+- `CraterClaw.Blazor`: Blazor WebAssembly frontend consuming the API (exploratory, in parallel with Vue)
 - `CraterClaw.Core.Tests`: xUnit unit tests for the core library (no live Ollama required)
 - `CraterClaw.Api.Tests`: xUnit integration tests for the web API
+- `CraterClaw.Blazor.Tests`: xUnit + bUnit component and client tests for the Blazor frontend
 
 ## Developer Commands
 
@@ -144,6 +148,14 @@ cd .\CraterClaw.Web
 npm run lint
 npm run lint:fix
 ```
+
+## Run the Blazor Frontend
+
+```powershell
+dotnet run --project .\CraterClaw.Blazor
+```
+
+The dev server runs at `http://localhost:5174` by default (port may vary; check the terminal output). It expects `CraterClaw.Api` to be running at `http://localhost:5000`. To use a different API URL, edit `CraterClaw.Blazor/wwwroot/appsettings.json` and set `ApiBaseUrl`.
 
 ## Run the Web API
 

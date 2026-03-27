@@ -5,8 +5,10 @@
 - `CraterClaw.Core` — core library (C#, .NET 10)
 - `CraterClaw.Console` — console harness (C#, .NET 10)
 - `CraterClaw.Api` — ASP.NET Core minimal API (C#, .NET 10)
+- `CraterClaw.Blazor` — Blazor WebAssembly frontend (C#, .NET 10)
 - `CraterClaw.Core.Tests` — xUnit unit tests (.NET 10)
 - `CraterClaw.Api.Tests` — xUnit integration tests using `WebApplicationFactory` (.NET 10)
+- `CraterClaw.Blazor.Tests` — xUnit + bUnit component and client tests (.NET 10)
 
 ## Developer Tooling
 
@@ -121,6 +123,33 @@ Vue 3 TypeScript frontend (Vite, Vitest). Consumes `CraterClaw.Api` over HTTP. A
 - `PluginBinding` — `name`, `tools` (string array).
 
 ESLint is configured via `eslint.config.mjs` using flat config format with `eslint-plugin-vue` (flat/essential), `@vue/eslint-config-typescript`, and `@vue/eslint-config-prettier`. Vitest globals (`describe`, `it`, `test`, `expect`, `vi`, etc.) are registered for `*.spec.ts` and `*.test.ts` files. Prettier is configured with `endOfLine: lf` for cross-platform consistency. `npm run lint` and `npm run lint:fix` are available.
+
+## CraterClaw.Blazor
+
+Blazor WebAssembly frontend (.NET 10). Consumes `CraterClaw.Api` over HTTP. API base URL read from `wwwroot/appsettings.json` key `ApiBaseUrl` (defaults to `http://localhost:5000`). Registered as a typed `HttpClient<CraterClawClient>` via `Microsoft.Extensions.Http`.
+
+### Project Layout
+
+- `Api/Types.cs` — C# record types mirroring all API response/request shapes (string-typed enums matching the API's `JsonStringEnumConverter` serialization).
+- `Api/CraterClawClient.cs` — typed `HttpClient` wrapper for all API endpoints.
+- `Components/` — reusable Razor components: `ProviderPanel`, `ModelPanel`, `InteractiveChat`, `ProfileSelector`, `AgenticPanel`.
+- `Pages/Home.razor` — root page; owns all selection state and wires components together.
+
+### Implemented
+
+- `GetProvidersAsync`, `GetProviderStatusAsync`, `GetModelsAsync`, `PostExecuteAsync`, `GetProfilesAsync`, `PostAgenticAsync` in `CraterClawClient`.
+- `ProviderPanel`: numbered provider list, selectable by click; status pill (loading / reachable / unreachable with error).
+- `ModelPanel`: numbered model list; hidden when no models available; reveals while loading.
+- `InteractiveChat`: manages own conversation state; textarea input with Enter-to-submit; appends user/assistant turns; error display.
+- `ProfileSelector`: numbered profile list with name and description; warning display for unavailable preferred values.
+- `AgenticPanel`: manages own agentic request state; displays response content, finish reason, tools invoked list; error display.
+- `Home.razor`: loads providers and profiles on init; selection flow matches console harness; profile defaults applied with `_pendingPreferredModel` pattern (stores preferred model name, applied after async model reload completes).
+
+### Tests (`CraterClaw.Blazor.Tests`)
+
+- `CraterClawClientTests` — verifies each method calls the correct HTTP endpoint and method using a mocked `HttpMessageHandler`.
+- `ProviderPanelTests`, `ModelPanelTests`, `ProfileSelectorTests` — bUnit component tests for dumb components; verify rendering, selection callbacks, and state display.
+- `InteractiveChatTests`, `AgenticPanelTests` — bUnit component tests with a `CraterClawClient` backed by a mocked handler; verify submit flow, response display, disabled states, and error handling.
 
 ## Console Harness Flow
 

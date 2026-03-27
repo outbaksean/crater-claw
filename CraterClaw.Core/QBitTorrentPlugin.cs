@@ -85,7 +85,7 @@ public sealed class QBitTorrentPlugin(
         return response;
     }
 
-    [KernelFunction, Description("List all torrents with name, hash, status, progress, and size.")]
+    [KernelFunction, Description("List all torrents with name, hash, status, progress, size, and category.")]
     public async Task<string> ListTorrentsAsync(CancellationToken cancellationToken = default)
     {
         if (!IsConfigured) return "Error: qBitTorrent is not configured.";
@@ -101,7 +101,8 @@ public sealed class QBitTorrentPlugin(
             {
                 name = t?["name"]?.ToString(),
                 state = t?["state"]?.ToString(),
-                added_on = t?["added_on"]?.GetValue<long>()
+                added_on = t?["added_on"]?.GetValue<long>(),
+                category = t?["category"]?.ToString()
             });
             return JsonSerializer.Serialize(trimmed);
         }
@@ -337,7 +338,7 @@ public sealed class QBitTorrentPlugin(
 
     public static IReadOnlyList<(string Name, string Description)> GetFunctionDescriptions() =>
     [
-        ("ListTorrents", "List all torrents with name, hash, status, progress, and size."),
+        ("ListTorrents", "List all torrents with name, hash, status, progress, size, and category."),
         ("AddTorrentByUrl", "Add a torrent from a magnet link or HTTP URL."),
         ("PauseTorrent", "Pause a torrent by its hash."),
         ("ResumeTorrent", "Resume a paused torrent by its hash."),

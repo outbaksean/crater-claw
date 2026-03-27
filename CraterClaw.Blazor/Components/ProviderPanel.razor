@@ -1,0 +1,58 @@
+@namespace CraterClaw.Blazor.Components
+
+<div class="panel">
+    <h2>Providers</h2>
+    @if (Providers.Count == 0)
+    {
+        <p class="muted">No providers configured.</p>
+    }
+    else
+    {
+        <ol>
+            @for (var i = 0; i < Providers.Count; i++)
+            {
+                var provider = Providers[i];
+                var isSelected = Selected?.Name == provider.Name;
+                <li>
+                    <button class="list-btn @(isSelected ? "selected" : "")"
+                            @onclick="() => OnProviderSelected.InvokeAsync(provider)">
+                        @provider.Name
+                    </button>
+                </li>
+            }
+        </ol>
+    }
+
+    @if (Selected is not null)
+    {
+        <div class="status-row">
+            @if (StatusLoading)
+            {
+                <span class="status-pill loading">checking...</span>
+            }
+            else if (Status is not null)
+            {
+                @if (Status.IsReachable)
+                {
+                    <span class="status-pill reachable">reachable</span>
+                }
+                else
+                {
+                    <span class="status-pill unreachable">unreachable</span>
+                    @if (Status.ErrorMessage is not null)
+                    {
+                        <span class="error-msg">@Status.ErrorMessage</span>
+                    }
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<ProviderEndpoint> Providers { get; set; } = [];
+    [Parameter] public ProviderEndpoint? Selected { get; set; }
+    [Parameter] public ProviderStatus? Status { get; set; }
+    [Parameter] public bool StatusLoading { get; set; }
+    [Parameter] public EventCallback<ProviderEndpoint> OnProviderSelected { get; set; }
+}
