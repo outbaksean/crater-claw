@@ -79,16 +79,25 @@
 
 ASP.NET Core minimal API. Loads `craterclaw.json` (optional, falls back to in-memory/environment config) and user secrets. Registers `AddCraterClawCore`. CORS is permissive (all origins, headers, methods) for development.
 
+### File Layout
+
+- `Program.cs` — startup and DI wiring only. Calls `app.MapProviderEndpoints()` and `app.MapProfileEndpoints()`.
+- `Models/ApiModels.cs` — all request/response record types used by the API.
+- `Endpoints/ProvidersEndpoints.cs` — `ProvidersEndpoints.MapProviderEndpoints(WebApplication)` extension method registering all provider-related routes.
+- `Endpoints/ProfilesEndpoints.cs` — `ProfilesEndpoints.MapProfileEndpoints(WebApplication)` extension method registering the profiles route.
+- `Services/IProviderResolver.cs` — `IProviderResolver` interface: `Resolve(string name) -> ProviderEndpoint?`, `GetAll() -> IEnumerable<ProviderEndpoint>`.
+- `Services/ProviderResolver.cs` — singleton implementation backed by `IOptions<ProviderOptions>`. Endpoint handlers inject `IProviderResolver` instead of `IOptions<ProviderOptions>` directly.
+
 ### Endpoints
 
-- `GET /api/providers` — returns all configured endpoint names and base URLs from `ProviderOptions`.
+- `GET /api/providers` — returns all configured endpoint names and base URLs from `IProviderResolver.GetAll()`.
 - `GET /api/providers/{name}/status` — calls `IProviderStatusService.CheckStatusAsync`, returns `{ isReachable, errorMessage }`. 404 if name not found.
 - `GET /api/providers/{name}/models` — calls `IModelListingService.ListModelsAsync`, returns `[{ name, sizeBytes, modifiedAt }]`. 404 if name not found.
 - `POST /api/providers/{name}/execute` — accepts `{ modelName, messages: [{role, content}], temperature?, maxTokens? }`, calls `IModelExecutionService.ExecuteAsync`, returns `{ content, modelName, finishReason }`. 404 if name not found.
 - `GET /api/profiles` — returns all behavior profiles from `IBehaviorProfileService`. Response shape: `{ id, name, description, systemPrompt, preferredProviderName, preferredModelName, plugins: [{ name, tools }] }`. Plugin `config` is excluded from the response (credentials not exposed).
 - `POST /api/providers/{name}/agentic` — accepts `{ modelName, prompt, profileId, maxIterations? }`, resolves profile via `IBehaviorProfileService`, builds plugin list (same logic as console), calls `IAgenticExecutionService.ExecuteAsync` with `StreamChunk: null`, returns `{ content, finishReason, toolsInvoked }`. 404 if endpoint not found, 400 if profile not found.
 
-Enums are serialized as strings (`JsonStringEnumConverter` applied globally).
+Enums are serialized as strings (`JsonStringEnumConverter` applied globally). Internal types are visible to `CraterClaw.Api.Tests` via `InternalsVisibleTo`.
 
 ## CraterClaw.Web
 

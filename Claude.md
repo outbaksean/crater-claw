@@ -67,6 +67,13 @@ When all phases in a spec are Done, move the spec file to `archive/`.
 - The user manages all git and GitHub commands manually. Do not run any git or GitHub commands unless explicitly instructed.
 - Exception: agents running in an isolated worktree should commit their changes there. Use a descriptive commit message. Do not push.
 
+## Security Policy
+
+- **Never save in this workspace**: passwords, private keys, API keys, tokens, hostnames, usernames, or any value that identifies or grants access to a real system
+- Use placeholder values in config examples (e.g., `your-host-here`, `your-api-key`)
+- This applies to all files including gitignored ones — AI assistants read the full workspace
+- **If you encounter anything in this workspace that looks potentially sensitive, call it out immediately before continuing**
+
 ## Other Notes
 
 - Python is not available for scripting

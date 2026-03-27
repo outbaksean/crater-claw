@@ -114,6 +114,10 @@ Search result filenames longer than 120 characters now include a `"..."` suffix 
 
 Added `OllamaProviderStatusService` tests: reachable on HTTP 200, unreachable on `HttpRequestException`, unreachable on non-success status, cancellation propagated. Added `SemanticKernelAgenticExecutionService` test: exception propagates when a kernel function throws during invocation.
 
+### api-controller-separation
+
+Refactored `CraterClaw.Api/Program.cs` into separate files: request/response record types to `Models/ApiModels.cs`, provider endpoint handlers to `Endpoints/ProvidersEndpoints.cs`, profiles endpoint to `Endpoints/ProfilesEndpoints.cs`. Extracted repeated provider-lookup pattern into `IProviderResolver`/`ProviderResolver` singleton registered in DI. `Program.cs` retains startup and DI wiring only. `InternalsVisibleTo` added to expose API internals to the test project. All 78 tests pass.
+
 ## Planned
 
 ### behavior-secrets
