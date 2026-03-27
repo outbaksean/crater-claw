@@ -118,7 +118,18 @@ Added `OllamaProviderStatusService` tests: reachable on HTTP 200, unreachable on
 
 Refactored `CraterClaw.Api/Program.cs` into separate files: request/response record types to `Models/ApiModels.cs`, provider endpoint handlers to `Endpoints/ProvidersEndpoints.cs`, profiles endpoint to `Endpoints/ProfilesEndpoints.cs`. Extracted repeated provider-lookup pattern into `IProviderResolver`/`ProviderResolver` singleton registered in DI. `Program.cs` retains startup and DI wiring only. `InternalsVisibleTo` added to expose API internals to the test project. All 78 tests pass.
 
+### web-agentic-streaming
+
+**Type: Code**
+
+Stream ollama responses in the website
+
 ## Planned
+
+### vscode-prettier-config
+
+**Type: Infranstructure**
+Update vscode config to not report problems on md files not in the workspace
 
 ### behavior-secrets
 
@@ -214,6 +225,13 @@ Depends on: media-server, media-library-config
 
 Terraform module and cloud-init config to provision the Jellyfin LXC on Proxmox, replacing the manual setup from `media-server`. Includes: container resource definitions, bind mount for the external drive, network config, and cloud-init for Jellyfin + Samba installation.
 Depends on: media-server
+
+### ollama-raw-logging
+
+**Type: Code**
+
+Capture raw HTTP request and response bodies for every Semantic Kernel call to Ollama. A `DelegatingHandler` intercepts the named `"ollama"` HttpClient, logs request bodies and tees response bodies (preserving streaming semantics) to the `CraterClaw.AiTraffic.Raw` logger category. Controlled by `aiRawLogging.enabled` config flag; output written to a separate rolling `.raw.log` file. Main log excludes raw traffic.
+Depends on: logging-breakout-ollama-responses
 
 ### thinking-mode-ollama
 

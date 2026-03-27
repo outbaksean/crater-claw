@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using CraterClaw.Api.Models;
 using CraterClaw.Api.Services;
 using CraterClaw.Core;
@@ -6,6 +8,12 @@ namespace CraterClaw.Api.Endpoints;
 
 internal static class ProvidersEndpoints
 {
+    private static readonly JsonSerializerOptions SseJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     public static void MapProviderEndpoints(this WebApplication app)
     {
         app.MapGet("/api/providers", (IProviderResolver resolver) =>
@@ -91,6 +99,59 @@ internal static class ProvidersEndpoints
 
             var result = await agenticService.ExecuteAsync(endpoint, agenticRequest, cancellationToken);
             return Results.Ok(new AgenticApiResponse(result.Content, result.FinishReason, result.ToolsInvoked));
+        });
+
+        app.MapPost("/api/providers/{name}/agentic/stream", async (
+            string name,
+            AgenticApiRequest request,
+            IProviderResolver resolver,
+            IBehaviorProfileService profileService,
+            IAgenticExecutionService agenticService,
+            IPluginRegistry pluginRegistry,
+            HttpContext httpContext,
+            CancellationToken cancellationToken) =>
+        {
+            var endpoint = resolver.Resolve(name);
+            if (endpoint is null)
+            {
+                httpContext.Response.StatusCode = 404;
+                return;
+            }
+
+            var profile = profileService.GetById(request.ProfileId);
+            if (profile is null)
+            {
+                httpContext.Response.StatusCode = 400;
+                await httpContext.Response.WriteAsync(
+                    $"Profile '{request.ProfileId}' not found.", cancellationToken);
+                return;
+            }
+
+            httpContext.Response.ContentType = "text/event-stream";
+            httpContext.Response.Headers.CacheControl = "no-cache";
+
+            var plugins = pluginRegistry.Resolve(profile.Plugins);
+
+            var agenticRequest = new AgenticRequest(
+                request.ModelName,
+                request.Prompt,
+                plugins,
+                request.MaxIterations ?? 10,
+                SystemPrompt: profile.SystemPrompt,
+                StreamChunk: async chunk =>
+                {
+                    await httpContext.Response.WriteAsync(
+                        $"data: {JsonSerializer.Serialize(new AgenticSseChunk("chunk", chunk), SseJsonOptions)}\n\n",
+                        cancellationToken);
+                    await httpContext.Response.Body.FlushAsync(cancellationToken);
+                });
+
+            var result = await agenticService.ExecuteAsync(endpoint, agenticRequest, cancellationToken);
+
+            await httpContext.Response.WriteAsync(
+                $"data: {JsonSerializer.Serialize(new AgenticSseDone("done", result.FinishReason, result.ToolsInvoked), SseJsonOptions)}\n\n",
+                cancellationToken);
+            await httpContext.Response.Body.FlushAsync(cancellationToken);
         });
     }
 }

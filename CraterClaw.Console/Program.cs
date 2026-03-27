@@ -302,7 +302,7 @@ try
                             taskPrompt.Trim(),
                             kernelPlugins,
                             MaxIterations: 10,
-                            StreamChunk: Console.Write,
+                            StreamChunk: chunk => { Console.Write(chunk); return Task.CompletedTask; },
                             SystemPrompt: selectedProfile.SystemPrompt);
 
                         Console.WriteLine("Response:");

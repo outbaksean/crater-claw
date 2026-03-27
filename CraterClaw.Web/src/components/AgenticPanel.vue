@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { postAgentic } from '../api/client'
-import type { AgenticResponse } from '../api/types'
+import { useAgentic } from '../composables/useAgentic'
 
 const props = defineProps<{
   providerName: string
@@ -10,28 +9,17 @@ const props = defineProps<{
 }>()
 
 const prompt = ref('')
-const loading = ref(false)
-const error = ref<string | null>(null)
-const result = ref<AgenticResponse | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const agentic = useAgentic()
 
 async function submit() {
   const content = prompt.value.trim()
-  if (!content || loading.value) return
-  loading.value = true
-  error.value = null
-  result.value = null
-  try {
-    result.value = await postAgentic(props.providerName, {
-      modelName: props.modelName,
-      prompt: content,
-      profileId: props.profileId,
-    })
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Agentic execution failed'
-  } finally {
-    loading.value = false
-  }
+  if (!content || agentic.loading.value) return
+  await agentic.run(props.providerName, {
+    modelName: props.modelName,
+    prompt: content,
+    profileId: props.profileId,
+  })
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -58,27 +46,28 @@ function onInput() {
           v-model="prompt"
           rows="1"
           placeholder="task prompt..."
-          :disabled="loading"
+          :disabled="agentic.loading.value"
           aria-label="Task prompt"
           @keydown="onKeydown"
           @input="onInput"
         />
-        <button type="submit" :disabled="loading || !prompt.trim()">
-          {{ loading ? 'running...' : 'run' }}
+        <button type="submit" :disabled="agentic.loading.value || !prompt.trim()">
+          {{ agentic.loading.value ? 'running...' : 'run' }}
         </button>
       </div>
     </form>
-    <p v-if="error" class="error">{{ error }}</p>
-    <div v-if="result" class="result">
-      <p v-if="loading" class="running-indicator">running...</p>
-      <p class="finish-reason">{{ result.finishReason }}</p>
-      <p v-if="result.toolsInvoked.length > 0" class="tools-line">
-        <span v-for="tool in result.toolsInvoked" :key="tool" class="tool-name">{{ tool }}</span>
+    <p v-if="agentic.error.value" class="error">{{ agentic.error.value }}</p>
+    <div v-if="agentic.content.value || agentic.loading.value" class="result">
+      <p v-if="agentic.loading.value" class="running-indicator">running...</p>
+      <p v-if="agentic.finishReason.value" class="finish-reason">
+        {{ agentic.finishReason.value }}
       </p>
-      <div class="response">{{ result.content }}</div>
-    </div>
-    <div v-else-if="loading" class="result">
-      <p class="running-indicator">running...</p>
+      <p v-if="agentic.toolsInvoked.value.length > 0" class="tools-line">
+        <span v-for="tool in agentic.toolsInvoked.value" :key="tool" class="tool-name">{{
+          tool
+        }}</span>
+      </p>
+      <div v-if="agentic.content.value" class="response">{{ agentic.content.value }}</div>
     </div>
   </div>
 </template>

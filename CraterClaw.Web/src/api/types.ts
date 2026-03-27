@@ -71,3 +71,16 @@ export interface AgenticResponse {
   finishReason: string
   toolsInvoked: string[]
 }
+
+export interface AgenticSseChunk {
+  type: 'chunk'
+  content: string
+}
+
+export interface AgenticSseDone {
+  type: 'done'
+  finishReason: string
+  toolsInvoked: string[]
+}
+
+export type AgenticSseEvent = AgenticSseChunk | AgenticSseDone

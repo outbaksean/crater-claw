@@ -85,7 +85,7 @@ public sealed class QBitTorrentPlugin(
         return response;
     }
 
-    [KernelFunction, Description("List all torrents with name, hash, status, progress, and size.")]
+    [KernelFunction, Description("List all torrents with their name, state, date added, amount remaining, priority, total size, and category.")]
     public async Task<string> ListTorrentsAsync(CancellationToken cancellationToken = default)
     {
         if (!IsConfigured) return "Error: qBitTorrent is not configured.";
@@ -337,7 +337,7 @@ public sealed class QBitTorrentPlugin(
 
     public static IReadOnlyList<(string Name, string Description)> GetFunctionDescriptions() =>
     [
-        ("ListTorrents", "List all torrents with name, hash, status, progress, and size."),
+        ("ListTorrents", "List all torrents with their name, state, date added, amount remaining, priority, total size, and category."),
         ("AddTorrentByUrl", "Add a torrent from a magnet link or HTTP URL."),
         ("PauseTorrent", "Pause a torrent by its hash."),
         ("ResumeTorrent", "Resume a paused torrent by its hash."),

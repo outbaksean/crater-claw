@@ -96,8 +96,9 @@ ASP.NET Core minimal API. Loads `craterclaw.json` (optional, falls back to in-me
 - `POST /api/providers/{name}/execute` — accepts `{ modelName, messages: [{role, content}], temperature?, maxTokens? }`, calls `IModelExecutionService.ExecuteAsync`, returns `{ content, modelName, finishReason }`. 404 if name not found.
 - `GET /api/profiles` — returns all behavior profiles from `IBehaviorProfileService`. Response shape: `{ id, name, description, systemPrompt, preferredProviderName, preferredModelName, plugins: [{ name, tools }] }`. Plugin `config` is excluded from the response (credentials not exposed).
 - `POST /api/providers/{name}/agentic` — accepts `{ modelName, prompt, profileId, maxIterations? }`, resolves profile via `IBehaviorProfileService`, builds plugin list (same logic as console), calls `IAgenticExecutionService.ExecuteAsync` with `StreamChunk: null`, returns `{ content, finishReason, toolsInvoked }`. 404 if endpoint not found, 400 if profile not found.
+- `POST /api/providers/{name}/agentic/stream` — same request shape; returns `text/event-stream`. Streams `{"type":"chunk","content":"..."}` events as text arrives, followed by a `{"type":"done","finishReason":"...","toolsInvoked":[...]}` event when complete. SSE JSON is camelCase with string enum values. 404 / 400 on unknown provider / profile (set before headers are sent).
 
-Enums are serialized as strings (`JsonStringEnumConverter` applied globally). Internal types are visible to `CraterClaw.Api.Tests` via `InternalsVisibleTo`.
+`AgenticRequest.StreamChunk` is `Func<string, Task>?` (async). Enums are serialized as strings (`JsonStringEnumConverter` applied globally). Internal types are visible to `CraterClaw.Api.Tests` via `InternalsVisibleTo`.
 
 ## CraterClaw.Web
 
@@ -119,6 +120,7 @@ Vue 3 TypeScript frontend (Vite, Vitest). Consumes `CraterClaw.Api` over HTTP. A
 - `useExecution` composable: manages conversation message history, calls `postExecute`, appends user and assistant turns.
 - `InteractiveChat` component: input form, conversation history display, loading/error state.
 - `useProfiles` composable: fetches profile list, tracks selected profile.
+- `useAgentic` composable: wraps `streamAgentic`; exposes `content` (builds up as chunks arrive), `finishReason`, `toolsInvoked`, `loading`, `error`, `run(providerName, request)`, and `cancel()`. Used by `AgenticPanel`.
 - `useBehaviorDefaults` composable: takes `providers` and `models` refs and `selectProvider`/`selectModel` callbacks. `applyProfileDefaults(profile)` applies preferred provider/model defaults from the profile, calling the appropriate select function if the preferred value is found, or pushing a warning string to `behaviorWarnings` if not. Warnings are cleared on each call.
 - `ProfileSelector` component: numbered list of profiles with name and description.
 - `AgenticPanel` component: task prompt input, displays response content, finish reason, and tools invoked list.
