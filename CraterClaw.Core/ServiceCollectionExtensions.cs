@@ -34,6 +34,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IKernelFactory, DefaultKernelFactory>();
         services.AddTransient<IAgenticExecutionService, SemanticKernelAgenticExecutionService>();
         services.AddHttpClient("qbittorrent");
+        services.AddTransient<OllamaLoggingHandler>();
+        services.AddHttpClient("ollama", c => c.Timeout = TimeSpan.FromMinutes(10))
+            .AddHttpMessageHandler<OllamaLoggingHandler>();
         services.AddSingleton<IPluginRegistry>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();

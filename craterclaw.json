@@ -12,6 +12,10 @@
         "enabled": true,
         "path": "C:\\ollama-logs"
     },
+    "aiRawLogging": {
+        "enabled": true,
+        "path": "C:\\ollama-logs"
+    },
     "behaviors": {
         "no-tools": {
             "name": "No Tools",
