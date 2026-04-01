@@ -144,7 +144,16 @@ internal static class ProvidersEndpoints
                         $"data: {JsonSerializer.Serialize(new AgenticSseChunk("chunk", chunk), SseJsonOptions)}\n\n",
                         cancellationToken);
                     await httpContext.Response.Body.FlushAsync(cancellationToken);
-                });
+                },
+                StreamThinkingChunk: request.ShowThinking == true
+                    ? async chunk =>
+                    {
+                        await httpContext.Response.WriteAsync(
+                            $"data: {JsonSerializer.Serialize(new AgenticSseThinking("thinking", chunk), SseJsonOptions)}\n\n",
+                            cancellationToken);
+                        await httpContext.Response.Body.FlushAsync(cancellationToken);
+                    }
+                    : null);
 
             var result = await agenticService.ExecuteAsync(endpoint, agenticRequest, cancellationToken);
 

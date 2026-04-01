@@ -41,7 +41,7 @@
 - `IProviderStatusService` — checks reachability of a provider endpoint.
 - `IModelListingService` — lists downloaded models at a provider endpoint.
 - `IModelExecutionService` — sends a conversational prompt to a model and returns the response (Semantic Kernel-backed via Ollama chat completion).
-- `IAgenticExecutionService` (`SemanticKernelAgenticExecutionService`) — runs a Semantic Kernel tool-use loop. Sends a prompt, processes function calls, invokes tools via SK kernel, and iterates until the model stops calling tools or the iteration limit is reached. Supports optional streaming output via `AgenticRequest.StreamChunk`.
+- `IAgenticExecutionService` (`SemanticKernelAgenticExecutionService`) — runs a Semantic Kernel tool-use loop. Sends a prompt, processes function calls, invokes tools via SK kernel, and iterates until the model stops calling tools or the iteration limit is reached. Supports optional streaming output via `AgenticRequest.StreamChunk` and optional thinking token streaming via `AgenticRequest.StreamThinkingChunk`. Uses `OllamaPromptExecutionSettings`. Thinking tokens are detected from `chunk.InnerContent as OllamaSharp.Models.Chat.ChatResponseStream` — `stream.Message?.Thinking` is non-null during thinking phases.
 
 ### Behavior Profiles
 
@@ -54,7 +54,9 @@
 
 - `IPluginRegistry` / `DefaultPluginRegistry` — resolves a list of `PluginBinding` values into `IReadOnlyList<KernelPlugin>`. Holds a dictionary of named factory delegates `Func<IReadOnlyDictionary<string, string>, object>`. For each binding: invokes the factory with `binding.Config`, creates a `KernelPlugin` via `KernelPluginFactory.CreateFromObject`, then filters to the `Tools` allowlist using `KernelPluginFactory.CreateFromFunctions` if the list is non-empty. Unknown plugin names are logged and skipped. Unknown tool names are logged and skipped.
 - Registered factories: `"qbittorrent"` — creates a `QBitTorrentPlugin` from config keys `baseUrl`, `username`, `password`.
-- Named `HttpClient` registrations: `"qbittorrent"` (plain), `"ollama"` (10-minute timeout, `OllamaLoggingHandler` attached). `DefaultKernelFactory` uses the `"ollama"` client.
+- Named `HttpClient` registrations: `"qbittorrent"` (plain), `"ollama"` (10-minute timeout, `OllamaThinkingHandler` then `OllamaLoggingHandler` attached in that order). `DefaultKernelFactory` uses the `"ollama"` client. `OllamaSharp` is a direct package reference in `CraterClaw.Core` (required to access `ChatResponseStream` for thinking token detection; the SK connector pulls it transitively but a direct reference is needed to use its types).
+- `OllamaThinkingContext` — static class with `AsyncLocal<bool> ThinkingEnabled`. Set by `SemanticKernelAgenticExecutionService` before the agentic loop based on whether `StreamThinkingChunk` is non-null. Flows through async continuations into the HTTP handler.
+- `OllamaThinkingHandler` — `DelegatingHandler` on the `"ollama"` client (outermost handler, runs before `OllamaLoggingHandler`). Reads the request body, parses it as JSON, and injects `"think": true` or `"think": false` based on `OllamaThinkingContext.ThinkingEnabled.Value`. This causes Ollama to skip the thinking phase entirely when thinking is disabled, rather than just hiding the tokens.
 
 ### Plugins
 
@@ -102,9 +104,9 @@ ASP.NET Core minimal API. Loads `craterclaw.json` (optional, falls back to in-me
 - `POST /api/providers/{name}/execute` — accepts `{ modelName, messages: [{role, content}], temperature?, maxTokens? }`, calls `IModelExecutionService.ExecuteAsync`, returns `{ content, modelName, finishReason }`. 404 if name not found.
 - `GET /api/profiles` — returns all behavior profiles from `IBehaviorProfileService`. Response shape: `{ id, name, description, systemPrompt, preferredProviderName, preferredModelName, plugins: [{ name, tools }] }`. Plugin `config` is excluded from the response (credentials not exposed).
 - `POST /api/providers/{name}/agentic` — accepts `{ modelName, prompt, profileId, maxIterations? }`, resolves profile via `IBehaviorProfileService`, builds plugin list (same logic as console), calls `IAgenticExecutionService.ExecuteAsync` with `StreamChunk: null`, returns `{ content, finishReason, toolsInvoked }`. 404 if endpoint not found, 400 if profile not found.
-- `POST /api/providers/{name}/agentic/stream` — same request shape; returns `text/event-stream`. Streams `{"type":"chunk","content":"..."}` events as text arrives, followed by a `{"type":"done","finishReason":"...","toolsInvoked":[...]}` event when complete. SSE JSON is camelCase with string enum values. 404 / 400 on unknown provider / profile (set before headers are sent).
+- `POST /api/providers/{name}/agentic/stream` — accepts `{ modelName, prompt, profileId, maxIterations?, showThinking? }`. Returns `text/event-stream`. When `showThinking` is true, emits `{"type":"thinking","content":"..."}` events for thinking tokens before or alongside content. Streams `{"type":"chunk","content":"..."}` events as text arrives, followed by a `{"type":"done","finishReason":"...","toolsInvoked":[...]}` event when complete. SSE JSON is camelCase with string enum values. 404 / 400 on unknown provider / profile (set before headers are sent).
 
-`AgenticRequest.StreamChunk` is `Func<string, Task>?` (async). Enums are serialized as strings (`JsonStringEnumConverter` applied globally). Internal types are visible to `CraterClaw.Api.Tests` via `InternalsVisibleTo`.
+`AgenticRequest.StreamChunk` and `AgenticRequest.StreamThinkingChunk` are both `Func<string, Task>?` (async). Enums are serialized as strings (`JsonStringEnumConverter` applied globally). Internal types are visible to `CraterClaw.Api.Tests` via `InternalsVisibleTo`.
 
 ## CraterClaw.Web
 
@@ -126,10 +128,10 @@ Vue 3 TypeScript frontend (Vite, Vitest). Consumes `CraterClaw.Api` over HTTP. A
 - `useExecution` composable: manages conversation message history, calls `postExecute`, appends user and assistant turns.
 - `InteractiveChat` component: input form, conversation history display, loading/error state.
 - `useProfiles` composable: fetches profile list, tracks selected profile.
-- `useAgentic` composable: wraps `streamAgentic`; exposes `content` (builds up as chunks arrive), `finishReason`, `toolsInvoked`, `loading`, `error`, `run(providerName, request)`, and `cancel()`. Used by `AgenticPanel`.
+- `useAgentic` composable: wraps `streamAgentic`; exposes `content`, `thinking` (builds up from thinking events), `showThinking` (boolean ref, default false; when true, `run` adds `showThinking: true` to the request), `finishReason`, `toolsInvoked`, `loading`, `error`, `run(providerName, request)`, and `cancel()`. Used by `AgenticPanel`.
 - `useBehaviorDefaults` composable: takes `providers` and `models` refs and `selectProvider`/`selectModel` callbacks. `applyProfileDefaults(profile)` applies preferred provider/model defaults from the profile, calling the appropriate select function if the preferred value is found, or pushing a warning string to `behaviorWarnings` if not. Warnings are cleared on each call.
 - `ProfileSelector` component: numbered list of profiles with name and description.
-- `AgenticPanel` component: task prompt input, displays response content, finish reason, and tools invoked list.
+- `AgenticPanel` component: task prompt input with a "show thinking" checkbox. Displays thinking tokens in a collapsed `<details>` block (`.thinking-content`) when present. Displays response content, finish reason, and tools invoked list.
 - `App.vue`: provider list, status indicator, model list, chat panel, profile selector (with inline behavior warnings), agentic panel (shown when provider + model + profile are all selected). When a profile is selected, `applyProfileDefaults` is called to apply preferred provider/model and surface warnings.
 
 ### API Types (`src/api/types.ts`)

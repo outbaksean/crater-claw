@@ -4,6 +4,8 @@ import type { AgenticRequest } from '../api/types'
 
 export function useAgentic() {
   const content = ref('')
+  const thinking = ref('')
+  const showThinking = ref(false)
   const finishReason = ref<string | null>(null)
   const toolsInvoked = ref<string[]>([])
   const loading = ref(false)
@@ -16,14 +18,21 @@ export function useAgentic() {
     loading.value = true
     error.value = null
     content.value = ''
+    thinking.value = ''
     finishReason.value = null
     toolsInvoked.value = []
     abortController = new AbortController()
 
+    const fullRequest: AgenticRequest = showThinking.value
+      ? { ...request, showThinking: true }
+      : request
+
     try {
-      for await (const event of streamAgentic(providerName, request, abortController.signal)) {
+      for await (const event of streamAgentic(providerName, fullRequest, abortController.signal)) {
         if (event.type === 'chunk') {
           content.value += event.content
+        } else if (event.type === 'thinking') {
+          thinking.value += event.content
         } else if (event.type === 'done') {
           finishReason.value = event.finishReason
           toolsInvoked.value = event.toolsInvoked
@@ -43,5 +52,15 @@ export function useAgentic() {
     abortController?.abort()
   }
 
-  return { content, finishReason, toolsInvoked, loading, error, run, cancel }
+  return {
+    content,
+    thinking,
+    showThinking,
+    finishReason,
+    toolsInvoked,
+    loading,
+    error,
+    run,
+    cancel,
+  }
 }

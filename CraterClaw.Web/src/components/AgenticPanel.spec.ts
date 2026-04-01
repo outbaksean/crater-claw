@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import AgenticPanel from './AgenticPanel.vue'
 import * as client from '../api/client'
-import type { AgenticSseEvent } from '../api/types'
+import type { AgenticSseEvent, AgenticSseThinking } from '../api/types'
 
 vi.mock('../api/client')
 
 const mockStreamAgentic = vi.mocked(client.streamAgentic)
 
-async function* makeStream(...events: AgenticSseEvent[]) {
-  for (const event of events) yield event
+async function* makeStream(...events: (AgenticSseEvent | AgenticSseThinking)[]) {
+  for (const event of events) yield event as AgenticSseEvent
 }
 
 beforeEach(() => {
@@ -42,7 +42,11 @@ describe('AgenticPanel', () => {
 
     expect(mockStreamAgentic).toHaveBeenCalledWith(
       'local',
-      { modelName: 'qwen3:8b', prompt: 'List my torrents', profileId: 'qbittorrent-manager' },
+      expect.objectContaining({
+        modelName: 'qwen3:8b',
+        prompt: 'List my torrents',
+        profileId: 'qbittorrent-manager',
+      }),
       expect.any(AbortSignal),
     )
     expect(wrapper.text()).toContain('Here are your torrents.')
@@ -87,6 +91,42 @@ describe('AgenticPanel', () => {
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()
 
     resolveStream()
+  })
+
+  it('passes showThinking true when toggle is checked', async () => {
+    mockStreamAgentic.mockReturnValue(
+      makeStream({ type: 'done', finishReason: 'Completed', toolsInvoked: [] }),
+    )
+
+    const wrapper = mountPanel()
+    await wrapper.find('input[type="checkbox"]').setValue(true)
+    await wrapper.find('textarea').setValue('test')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(mockStreamAgentic).toHaveBeenCalledWith(
+      'local',
+      expect.objectContaining({ showThinking: true }),
+      expect.any(AbortSignal),
+    )
+  })
+
+  it('displays thinking content when present', async () => {
+    mockStreamAgentic.mockReturnValue(
+      makeStream(
+        { type: 'thinking', content: 'analyzing the request...' },
+        { type: 'chunk', content: 'Done.' },
+        { type: 'done', finishReason: 'Completed', toolsInvoked: [] },
+      ),
+    )
+
+    const wrapper = mountPanel()
+    await wrapper.find('textarea').setValue('test')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('.thinking-content').exists()).toBe(true)
+    expect(wrapper.find('.thinking-content').text()).toContain('analyzing the request...')
   })
 
   it('displays error on failure', async () => {

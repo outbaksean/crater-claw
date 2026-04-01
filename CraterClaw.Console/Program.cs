@@ -322,12 +322,25 @@ try
                 {
                     try
                     {
+                        Console.Write("Show thinking? [y/N]: ");
+                        var showThinkingInput = Console.ReadLine();
+                        var showThinking = string.Equals(showThinkingInput?.Trim(), "y", StringComparison.OrdinalIgnoreCase);
+
                         var agenticRequest = new AgenticRequest(
                             selectedModelName,
                             taskPrompt.Trim(),
                             kernelPlugins,
                             MaxIterations: 10,
                             StreamChunk: chunk => { Console.Write(chunk); return Task.CompletedTask; },
+                            StreamThinkingChunk: showThinking
+                                ? chunk =>
+                                {
+                                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                                    Console.Write(chunk);
+                                    Console.ResetColor();
+                                    return Task.CompletedTask;
+                                }
+                                : null,
                             SystemPrompt: selectedProfile.SystemPrompt);
 
                         Console.WriteLine("Response:");

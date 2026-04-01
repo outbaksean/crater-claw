@@ -16,10 +16,12 @@ internal sealed record AgenticApiRequest(
     string ModelName,
     string Prompt,
     string ProfileId,
-    int? MaxIterations = null);
+    int? MaxIterations = null,
+    bool? ShowThinking = null);
 internal sealed record AgenticApiResponse(string Content, AgenticFinishReason FinishReason, IReadOnlyList<string> ToolsInvoked);
 internal sealed record PluginBindingApiItem(string Name, IReadOnlyList<string> Tools);
 internal sealed record AgenticSseChunk(string Type, string Content);
+internal sealed record AgenticSseThinking(string Type, string Content);
 internal sealed record AgenticSseDone(string Type, AgenticFinishReason FinishReason, IReadOnlyList<string> ToolsInvoked);
 
 internal sealed record BehaviorProfileApiItem(

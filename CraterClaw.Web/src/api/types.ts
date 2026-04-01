@@ -64,6 +64,7 @@ export interface AgenticRequest {
   prompt: string
   profileId: string
   maxIterations?: number
+  showThinking?: boolean
 }
 
 export interface AgenticResponse {
@@ -77,10 +78,15 @@ export interface AgenticSseChunk {
   content: string
 }
 
+export interface AgenticSseThinking {
+  type: 'thinking'
+  content: string
+}
+
 export interface AgenticSseDone {
   type: 'done'
   finishReason: string
   toolsInvoked: string[]
 }
 
-export type AgenticSseEvent = AgenticSseChunk | AgenticSseDone
+export type AgenticSseEvent = AgenticSseChunk | AgenticSseThinking | AgenticSseDone
