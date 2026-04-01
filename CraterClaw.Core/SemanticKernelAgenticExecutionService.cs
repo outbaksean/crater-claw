@@ -58,7 +58,7 @@ internal sealed class SemanticKernelAgenticExecutionService(
                 {
                     if (chunk.Content is not null)
                     {
-                        request.StreamChunk(chunk.Content);
+                        await request.StreamChunk(chunk.Content);
                         contentBuilder.Append(chunk.Content);
                     }
                     fcBuilder.Append(chunk);

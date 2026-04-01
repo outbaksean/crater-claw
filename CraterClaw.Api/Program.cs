@@ -46,6 +46,10 @@ var aiEnabled = builder.Configuration.GetValue<bool>("aiLogging:enabled");
 var aiPathConfig = builder.Configuration.GetValue<string>("aiLogging:path") ?? string.Empty;
 var aiLogPath = ResolveAiLogPath(aiPathConfig, logDirectory);
 
+var rawEnabled = builder.Configuration.GetValue<bool>("aiRawLogging:enabled");
+var rawPathConfig = builder.Configuration.GetValue<string>("aiRawLogging:path") ?? string.Empty;
+var rawLogPath = ResolveRawLogPath(rawPathConfig, logDirectory);
+
 static string ResolveAiLogPath(string configured, string defaultDirectory)
 {
     if (string.IsNullOrWhiteSpace(configured))
@@ -58,6 +62,18 @@ static string ResolveAiLogPath(string configured, string defaultDirectory)
     return resolved;
 }
 
+static string ResolveRawLogPath(string configured, string defaultDirectory)
+{
+    if (string.IsNullOrWhiteSpace(configured))
+        return Path.Combine(defaultDirectory, "ollama-api-raw-.log");
+    var resolved = Path.IsPathRooted(configured)
+        ? configured
+        : Path.Combine(AppContext.BaseDirectory, configured);
+    if (Directory.Exists(resolved) || resolved.EndsWith(Path.DirectorySeparatorChar) || resolved.EndsWith(Path.AltDirectorySeparatorChar))
+        return Path.Combine(resolved.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), "ollama-raw-.log");
+    return resolved;
+}
+
 var logConfig = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
@@ -65,7 +81,7 @@ var logConfig = new LoggerConfiguration()
     .WriteTo.Logger(lc => lc
         .Filter.ByExcluding(e =>
             e.Properties.TryGetValue("SourceContext", out var sc) &&
-            sc.ToString().Trim('"') == "CraterClaw.AiTraffic")
+            sc.ToString().Trim('"').StartsWith("CraterClaw.AiTraffic"))
         .WriteTo.File(logPath, rollingInterval: RollingInterval.Day));
 
 if (aiEnabled)
@@ -74,6 +90,13 @@ if (aiEnabled)
             e.Properties.TryGetValue("SourceContext", out var sc) &&
             sc.ToString().Trim('"') == "CraterClaw.AiTraffic")
         .WriteTo.File(aiLogPath, rollingInterval: RollingInterval.Day));
+
+if (rawEnabled)
+    logConfig = logConfig.WriteTo.Logger(lc => lc
+        .Filter.ByIncludingOnly(e =>
+            e.Properties.TryGetValue("SourceContext", out var sc) &&
+            sc.ToString().Trim('"') == "CraterClaw.AiTraffic.Raw")
+        .WriteTo.File(rawLogPath, rollingInterval: RollingInterval.Day));
 
 builder.Host.UseSerilog(logConfig.CreateLogger(), dispose: true);
 

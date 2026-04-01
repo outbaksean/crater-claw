@@ -118,7 +118,25 @@ Added `OllamaProviderStatusService` tests: reachable on HTTP 200, unreachable on
 
 Refactored `CraterClaw.Api/Program.cs` into separate files: request/response record types to `Models/ApiModels.cs`, provider endpoint handlers to `Endpoints/ProvidersEndpoints.cs`, profiles endpoint to `Endpoints/ProfilesEndpoints.cs`. Extracted repeated provider-lookup pattern into `IProviderResolver`/`ProviderResolver` singleton registered in DI. `Program.cs` retains startup and DI wiring only. `InternalsVisibleTo` added to expose API internals to the test project. All 78 tests pass.
 
+### web-agentic-streaming
+
+**Type: Code**
+
+Stream ollama responses in the website. SSE endpoint (`POST /api/providers/{name}/agentic/stream`) streams `chunk` and `done` events. Vue `useAgentic` composable and `AgenticPanel` display content progressively.
+
+### ollama-raw-logging
+
+**Type: Code**
+
+Capture raw HTTP request and response bodies for every Semantic Kernel call to Ollama. A `DelegatingHandler` intercepts the named `"ollama"` HttpClient, logs request bodies and tees response bodies (preserving streaming semantics) to the `CraterClaw.AiTraffic.Raw` logger category. Controlled by `aiRawLogging.enabled` config flag; output written to a separate rolling `.raw.log` file. Main log excludes raw traffic.
+Depends on: logging-breakout-ollama-responses
+
 ## Planned
+
+### vscode-prettier-config
+
+**Type: Infranstructure**
+Update vscode config to not report problems on md files not in the workspace
 
 ### behavior-secrets
 
@@ -220,13 +238,6 @@ Depends on: media-server
 **Type: Code**
 
 Enable thinking mode by using OllamaPromptExecutionSettings instead of PromptExecutionSettings in SemanticKernelAgenticExecutionService and include "think" true in AdditionalProperties. Thinking should be toggleable by the user.
-
-### web-agentic-streaming
-
-**Type: Code**
-
-Add streaming support to the agentic execution path in the API and web frontend. Currently streaming only works in the console harness via `StreamChunk`. The API returns the full response only after completion, leaving the web UI blank for the duration of long tasks. Requires a streaming endpoint (SSE or chunked transfer) and a Vue composable update to consume it.
-Depends on: vue-frontend
 
 ### web-ux-refactor-2
 

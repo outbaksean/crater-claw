@@ -20,6 +20,10 @@ var aiEnabled = configuration.GetValue<bool>("aiLogging:enabled");
 var aiPathConfig = configuration.GetValue<string>("aiLogging:path") ?? string.Empty;
 var aiLogPath = ResolveAiLogPath(aiPathConfig, logDirectory);
 
+var rawEnabled = configuration.GetValue<bool>("aiRawLogging:enabled");
+var rawPathConfig = configuration.GetValue<string>("aiRawLogging:path") ?? string.Empty;
+var rawLogPath = ResolveRawLogPath(rawPathConfig, logDirectory);
+
 static string ResolveConfigPath(string[] args, string defaultPath)
 {
     var envPath = Environment.GetEnvironmentVariable("CRATERCLAW_CONFIG");
@@ -45,13 +49,25 @@ static string ResolveAiLogPath(string configured, string defaultDirectory)
     return resolved;
 }
 
+static string ResolveRawLogPath(string configured, string defaultDirectory)
+{
+    if (string.IsNullOrWhiteSpace(configured))
+        return Path.Combine(defaultDirectory, "ollama-raw-.log");
+    var resolved = Path.IsPathRooted(configured)
+        ? configured
+        : Path.Combine(AppContext.BaseDirectory, configured);
+    if (Directory.Exists(resolved) || resolved.EndsWith(Path.DirectorySeparatorChar) || resolved.EndsWith(Path.AltDirectorySeparatorChar))
+        return Path.Combine(resolved.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), "ollama-raw-.log");
+    return resolved;
+}
+
 var logConfig = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .MinimumLevel.Override("System.Net.Http", Serilog.Events.LogEventLevel.Warning)
     .WriteTo.Logger(lc => lc
         .Filter.ByExcluding(e =>
             e.Properties.TryGetValue("SourceContext", out var sc) &&
-            sc.ToString().Trim('"') == "CraterClaw.AiTraffic")
+            sc.ToString().Trim('"').StartsWith("CraterClaw.AiTraffic"))
         .WriteTo.File(logPath, rollingInterval: RollingInterval.Day));
 
 if (aiEnabled)
@@ -60,6 +76,13 @@ if (aiEnabled)
             e.Properties.TryGetValue("SourceContext", out var sc) &&
             sc.ToString().Trim('"') == "CraterClaw.AiTraffic")
         .WriteTo.File(aiLogPath, rollingInterval: RollingInterval.Day));
+
+if (rawEnabled)
+    logConfig = logConfig.WriteTo.Logger(lc => lc
+        .Filter.ByIncludingOnly(e =>
+            e.Properties.TryGetValue("SourceContext", out var sc) &&
+            sc.ToString().Trim('"') == "CraterClaw.AiTraffic.Raw")
+        .WriteTo.File(rawLogPath, rollingInterval: RollingInterval.Day));
 
 Log.Logger = logConfig.CreateLogger();
 
@@ -82,6 +105,8 @@ try
     Console.WriteLine($"Log file: {logDirectory}");
     if (aiEnabled)
         Console.WriteLine($"AI log file: {aiLogPath}");
+    if (rawEnabled)
+        Console.WriteLine($"Raw log file: {rawLogPath}");
 
     var endpoints = providerOptions.Endpoints;
 
@@ -302,7 +327,7 @@ try
                             taskPrompt.Trim(),
                             kernelPlugins,
                             MaxIterations: 10,
-                            StreamChunk: Console.Write,
+                            StreamChunk: chunk => { Console.Write(chunk); return Task.CompletedTask; },
                             SystemPrompt: selectedProfile.SystemPrompt);
 
                         Console.WriteLine("Response:");

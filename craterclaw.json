@@ -12,6 +12,10 @@
         "enabled": true,
         "path": "C:\\ollama-logs"
     },
+    "aiRawLogging": {
+        "enabled": true,
+        "path": "C:\\ollama-logs"
+    },
     "behaviors": {
         "no-tools": {
             "name": "No Tools",
@@ -24,7 +28,7 @@
         "qbittorrent-seedbox": {
             "name": "qBitTorrent (Seedbox)",
             "description": "Managing downloads on the remote seedbox qBitTorrent client.",
-            "systemPrompt": "You are a torrent management assistant. Use the available tools to help manage downloads please.",
+            "systemPrompt": "You are a torrent management assistant. Use the available tools to manage and report on downloads. Answer questions directly and conversationally — never describe or narrate the raw data, just answer what was asked. When listing torrents, present them as a plain list or brief summary, not as a description of a data structure.",
             "preferredProviderName": null,
             "preferredModelName": null,
             "plugins": [

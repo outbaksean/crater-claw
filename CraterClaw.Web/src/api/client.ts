@@ -9,6 +9,7 @@ import type {
   McpAvailability,
   AgenticRequest,
   AgenticResponse,
+  AgenticSseEvent,
 } from './types'
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:5000'
@@ -71,4 +72,46 @@ export function postAgentic(
   request: AgenticRequest,
 ): Promise<AgenticResponse> {
   return post(`/api/providers/${encodeURIComponent(providerName)}/agentic`, request)
+}
+
+export async function* streamAgentic(
+  providerName: string,
+  request: AgenticRequest,
+  signal?: AbortSignal,
+): AsyncGenerator<AgenticSseEvent> {
+  const res = await fetch(
+    `${baseUrl}/api/providers/${encodeURIComponent(providerName)}/agentic/stream`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+      signal,
+    },
+  )
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`POST agentic/stream failed: ${res.status}${detail ? ` — ${detail}` : ''}`)
+  }
+
+  const reader = res.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop()!
+      for (const part of parts) {
+        const line = part.trim()
+        if (line.startsWith('data: ')) {
+          yield JSON.parse(line.slice(6)) as AgenticSseEvent
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
 }

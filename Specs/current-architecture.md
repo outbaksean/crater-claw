@@ -31,6 +31,7 @@
 
 - `ProviderOptions` — named collection of endpoints (`BaseUrl`); `Active` names the default.
 - `AiLoggingOptions` — `Enabled` (bool, default false), `Path` (string). Accepts a directory path or a file prefix. Bound to the `aiLogging` config section. No validator.
+- `AiRawLoggingOptions` — `Enabled` (bool, default false), `Path` (string). Same resolution rules as `AiLoggingOptions`. Bound to the `aiRawLogging` config section. No validator.
 - `BehaviorEntry` / `PluginEntry` — POCO types bound to `behaviors` section of config. `BehaviorEntry` has `Name`, `Description`, `SystemPrompt`, `PreferredProviderName`, `PreferredModelName`, and a `List<PluginEntry>`. `PluginEntry` has `Name`, `Tools`, and `Config` (dictionary of string key/value for per-binding plugin connection settings).
 
 ## CraterClaw.Core
@@ -53,6 +54,7 @@
 
 - `IPluginRegistry` / `DefaultPluginRegistry` — resolves a list of `PluginBinding` values into `IReadOnlyList<KernelPlugin>`. Holds a dictionary of named factory delegates `Func<IReadOnlyDictionary<string, string>, object>`. For each binding: invokes the factory with `binding.Config`, creates a `KernelPlugin` via `KernelPluginFactory.CreateFromObject`, then filters to the `Tools` allowlist using `KernelPluginFactory.CreateFromFunctions` if the list is non-empty. Unknown plugin names are logged and skipped. Unknown tool names are logged and skipped.
 - Registered factories: `"qbittorrent"` — creates a `QBitTorrentPlugin` from config keys `baseUrl`, `username`, `password`.
+- Named `HttpClient` registrations: `"qbittorrent"` (plain), `"ollama"` (10-minute timeout, `OllamaLoggingHandler` attached). `DefaultKernelFactory` uses the `"ollama"` client.
 
 ### Plugins
 
@@ -68,9 +70,13 @@
 ### Logging
 
 - Both the console and API use Serilog with sub-logger routing.
-- Main log: rolling daily file in `logs/` relative to the application base directory. Contains lifecycle events, warnings, and errors. The `CraterClaw.AiTraffic` category and `System.Net.Http` namespace are excluded.
+- Main log: rolling daily file in `logs/` relative to the application base directory. Contains lifecycle events, warnings, and errors. All `CraterClaw.AiTraffic` sub-categories and `System.Net.Http` namespace are excluded (filter uses `StartsWith("CraterClaw.AiTraffic")`).
 - AI log: rolling daily `.log` file written only when `aiLogging.enabled` is `true`. `aiLogging.path` may be a directory (files written as `ai-{date}.log` inside it) or a file prefix; defaults to `logs/ai-{date}.log`. Contains only `CraterClaw.AiTraffic` events: full Ollama request JSON and full response content with no truncation.
+- Raw HTTP log: rolling daily `.log` file written only when `aiRawLogging.enabled` is `true`. `aiRawLogging.path` follows the same resolution rules as `aiLogging.path`; defaults to `logs/ollama-raw-{date}.log` (console) / `logs/ollama-api-raw-{date}.log` (API). Contains only `CraterClaw.AiTraffic.Raw` events: raw Ollama HTTP request bodies (`[REQUEST]`) and response bodies (`[RESPONSE]`). Response bodies are captured via `TeeHttpContent` / `TeeStream` which pass data through without buffering the full response before delivery.
 - `OllamaModelExecutionService` and `SemanticKernelAgenticExecutionService` each hold a named logger `_aiLogger = loggerFactory.CreateLogger("CraterClaw.AiTraffic")` for AI-traffic detail.
+- `OllamaLoggingHandler` — `DelegatingHandler` registered on the named `"ollama"` `HttpClient`. Reads and logs the request body, then wraps `response.Content` with `TeeHttpContent`.
+- `TeeHttpContent` — wraps an `HttpContent`, tees bytes to a `MemoryStream` accumulator as they are read (via `TeeStream` for the `ReadAsStreamAsync` path; via direct copy for the `SerializeToStreamAsync` path). Logs the accumulated response body to `CraterClaw.AiTraffic.Raw` on `Dispose`.
+- `TeeStream` — pass-through `Stream` that writes a copy of every read to a shared `MemoryStream` accumulator owned by `TeeHttpContent`.
 - Sensitive values (search queries, qBitTorrent credentials/URL) are not logged.
 - Minimum level: Debug. Both console and API apply `MinimumLevel.Override("System.Net.Http", Warning)` to suppress HTTP client request logs. The API additionally overrides `Microsoft` and `System` namespaces.
 - Registered via `AddLogging(b => b.AddSerilog(...))` in the console; via `builder.Host.UseSerilog(...)` in the API.
@@ -96,8 +102,9 @@ ASP.NET Core minimal API. Loads `craterclaw.json` (optional, falls back to in-me
 - `POST /api/providers/{name}/execute` — accepts `{ modelName, messages: [{role, content}], temperature?, maxTokens? }`, calls `IModelExecutionService.ExecuteAsync`, returns `{ content, modelName, finishReason }`. 404 if name not found.
 - `GET /api/profiles` — returns all behavior profiles from `IBehaviorProfileService`. Response shape: `{ id, name, description, systemPrompt, preferredProviderName, preferredModelName, plugins: [{ name, tools }] }`. Plugin `config` is excluded from the response (credentials not exposed).
 - `POST /api/providers/{name}/agentic` — accepts `{ modelName, prompt, profileId, maxIterations? }`, resolves profile via `IBehaviorProfileService`, builds plugin list (same logic as console), calls `IAgenticExecutionService.ExecuteAsync` with `StreamChunk: null`, returns `{ content, finishReason, toolsInvoked }`. 404 if endpoint not found, 400 if profile not found.
+- `POST /api/providers/{name}/agentic/stream` — same request shape; returns `text/event-stream`. Streams `{"type":"chunk","content":"..."}` events as text arrives, followed by a `{"type":"done","finishReason":"...","toolsInvoked":[...]}` event when complete. SSE JSON is camelCase with string enum values. 404 / 400 on unknown provider / profile (set before headers are sent).
 
-Enums are serialized as strings (`JsonStringEnumConverter` applied globally). Internal types are visible to `CraterClaw.Api.Tests` via `InternalsVisibleTo`.
+`AgenticRequest.StreamChunk` is `Func<string, Task>?` (async). Enums are serialized as strings (`JsonStringEnumConverter` applied globally). Internal types are visible to `CraterClaw.Api.Tests` via `InternalsVisibleTo`.
 
 ## CraterClaw.Web
 
@@ -119,6 +126,7 @@ Vue 3 TypeScript frontend (Vite, Vitest). Consumes `CraterClaw.Api` over HTTP. A
 - `useExecution` composable: manages conversation message history, calls `postExecute`, appends user and assistant turns.
 - `InteractiveChat` component: input form, conversation history display, loading/error state.
 - `useProfiles` composable: fetches profile list, tracks selected profile.
+- `useAgentic` composable: wraps `streamAgentic`; exposes `content` (builds up as chunks arrive), `finishReason`, `toolsInvoked`, `loading`, `error`, `run(providerName, request)`, and `cancel()`. Used by `AgenticPanel`.
 - `useBehaviorDefaults` composable: takes `providers` and `models` refs and `selectProvider`/`selectModel` callbacks. `applyProfileDefaults(profile)` applies preferred provider/model defaults from the profile, calling the appropriate select function if the preferred value is found, or pushing a warning string to `behaviorWarnings` if not. Warnings are cleared on each call.
 - `ProfileSelector` component: numbered list of profiles with name and description.
 - `AgenticPanel` component: task prompt input, displays response content, finish reason, and tools invoked list.
