@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useAgentic } from './useAgentic'
 import * as client from '../api/client'
-import type { AgenticSseEvent } from '../api/types'
+import type { AgenticSseEvent, AgenticSseThinking } from '../api/types'
 
 vi.mock('../api/client')
 
 const mockStreamAgentic = vi.mocked(client.streamAgentic)
 
-async function* makeStream(...events: AgenticSseEvent[]) {
-  for (const event of events) yield event
+async function* makeStream(...events: (AgenticSseEvent | AgenticSseThinking)[]) {
+  for (const event of events) yield event as AgenticSseEvent
 }
 
 beforeEach(() => {
@@ -75,6 +75,42 @@ describe('useAgentic', () => {
     await run('local', { modelName: 'test', prompt: 'hi', profileId: 'p1' })
 
     expect(error.value).toBe('network error')
+  })
+
+  it('accumulates thinking chunks into thinking ref', async () => {
+    mockStreamAgentic.mockReturnValue(
+      makeStream(
+        { type: 'thinking', content: 'Let me think...' },
+        { type: 'thinking', content: ' okay.' },
+        { type: 'chunk', content: 'Hello' },
+        { type: 'done', finishReason: 'Completed', toolsInvoked: [] },
+      ),
+    )
+
+    const { thinking, run } = useAgentic()
+    await run('local', { modelName: 'test', prompt: 'hi', profileId: 'p1' })
+
+    expect(thinking.value).toBe('Let me think... okay.')
+  })
+
+  it('thinking is reset on each run', async () => {
+    mockStreamAgentic.mockReturnValue(
+      makeStream(
+        { type: 'thinking', content: 'first thought' },
+        { type: 'done', finishReason: 'Completed', toolsInvoked: [] },
+      ),
+    )
+
+    const { thinking, run } = useAgentic()
+    await run('local', { modelName: 'test', prompt: 'first', profileId: 'p1' })
+    expect(thinking.value).toBe('first thought')
+
+    mockStreamAgentic.mockReturnValue(
+      makeStream({ type: 'done', finishReason: 'Completed', toolsInvoked: [] }),
+    )
+
+    await run('local', { modelName: 'test', prompt: 'second', profileId: 'p1' })
+    expect(thinking.value).toBe('')
   })
 
   it('clears previous result on new run', async () => {

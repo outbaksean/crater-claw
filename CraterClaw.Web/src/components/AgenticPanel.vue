@@ -55,10 +55,18 @@ function onInput() {
           {{ agentic.loading.value ? 'running...' : 'run' }}
         </button>
       </div>
+      <label class="thinking-toggle">
+        <input type="checkbox" v-model="agentic.showThinking.value" />
+        show thinking
+      </label>
     </form>
     <p v-if="agentic.error.value" class="error">{{ agentic.error.value }}</p>
     <div v-if="agentic.content.value || agentic.loading.value" class="result">
       <p v-if="agentic.loading.value" class="running-indicator">running...</p>
+      <details v-if="agentic.thinking.value" class="thinking-block">
+        <summary>thinking</summary>
+        <div class="thinking-content">{{ agentic.thinking.value }}</div>
+      </details>
       <p v-if="agentic.finishReason.value" class="finish-reason">
         {{ agentic.finishReason.value }}
       </p>
@@ -141,6 +149,20 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.thinking-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.thinking-toggle input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+
 .error {
   color: var(--err);
   font-size: 12px;
@@ -165,6 +187,36 @@ button:disabled {
   50% {
     opacity: 1;
   }
+}
+
+.thinking-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.thinking-block summary {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  padding: 6px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.thinking-block summary::-webkit-details-marker {
+  display: none;
+}
+
+.thinking-content {
+  padding: 8px 12px 12px;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  line-height: 1.6;
+  max-height: 240px;
+  overflow-y: auto;
 }
 
 .finish-reason {

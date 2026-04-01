@@ -2,6 +2,8 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.Ollama;
+using OllamaSharp.Models.Chat;
 
 namespace CraterClaw.Core;
 
@@ -26,7 +28,7 @@ internal sealed class SemanticKernelAgenticExecutionService(
             chatHistory.AddSystemMessage(request.SystemPrompt);
         chatHistory.AddUserMessage(request.Prompt);
 
-        var settings = new PromptExecutionSettings
+        var settings = new OllamaPromptExecutionSettings
         {
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(
                 functions: null, autoInvoke: false, options: null)
@@ -56,7 +58,14 @@ internal sealed class SemanticKernelAgenticExecutionService(
                 await foreach (var chunk in chatService.GetStreamingChatMessageContentsAsync(
                     chatHistory, settings, kernel, cancellationToken))
                 {
-                    if (chunk.Content is not null)
+                    if (chunk.InnerContent is ChatResponseStream ollamaStream)
+                    {
+                        var thinkingText = ollamaStream.Message?.Thinking;
+                        if (!string.IsNullOrEmpty(thinkingText) && request.StreamThinkingChunk is not null)
+                            await request.StreamThinkingChunk(thinkingText);
+                    }
+
+                    if (!string.IsNullOrEmpty(chunk.Content))
                     {
                         await request.StreamChunk(chunk.Content);
                         contentBuilder.Append(chunk.Content);

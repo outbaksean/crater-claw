@@ -131,6 +131,12 @@ Stream ollama responses in the website. SSE endpoint (`POST /api/providers/{name
 Capture raw HTTP request and response bodies for every Semantic Kernel call to Ollama. A `DelegatingHandler` intercepts the named `"ollama"` HttpClient, logs request bodies and tees response bodies (preserving streaming semantics) to the `CraterClaw.AiTraffic.Raw` logger category. Controlled by `aiRawLogging.enabled` config flag; output written to a separate rolling `.raw.log` file. Main log excludes raw traffic.
 Depends on: logging-breakout-ollama-responses
 
+### thinking-mode-ollama
+
+**Type: Code**
+
+Surface thinking tokens emitted by thinking-capable Ollama models (e.g. qwen3). Thinking tokens detected from `chunk.InnerContent as ChatResponseStream`. `AgenticRequest.StreamThinkingChunk` callback delivers tokens. Console shows thinking in dark gray with a `[y/N]` toggle before each run. API stream emits `{"type":"thinking"}` SSE events when `showThinking: true`. Vue `AgenticPanel` has a checkbox and displays thinking in a collapsible `<details>` block. Note: the SK Ollama connector does not expose an API to enable/disable thinking at the request level; thinking is model-dependent.
+
 ## Planned
 
 ### vscode-prettier-config
@@ -232,12 +238,6 @@ Depends on: media-server, media-library-config
 
 Terraform module and cloud-init config to provision the Jellyfin LXC on Proxmox, replacing the manual setup from `media-server`. Includes: container resource definitions, bind mount for the external drive, network config, and cloud-init for Jellyfin + Samba installation.
 Depends on: media-server
-
-### thinking-mode-ollama
-
-**Type: Code**
-
-Enable thinking mode by using OllamaPromptExecutionSettings instead of PromptExecutionSettings in SemanticKernelAgenticExecutionService and include "think" true in AdditionalProperties. Thinking should be toggleable by the user.
 
 ### web-ux-refactor-2
 

@@ -26,7 +26,7 @@ if (chunk.InnerContent is OllamaSharp.Models.Chat.ChatResponseStream stream)
 
 ## Phase 1: Core - surface thinking tokens
 
-**Status: Pending**
+**Status: Done**
 
 ### Context
 
@@ -93,7 +93,7 @@ Dependencies: Ollama running with qwen3:8b (or another thinking-capable model).
 
 ## Phase 2: Console - show thinking with toggle
 
-**Status: Pending**
+**Status: Done**
 
 ### Context
 
@@ -156,7 +156,7 @@ Dependencies: Phase 1 complete. Ollama running with qwen3:8b.
 
 ## Phase 3: API and web - thinking in SSE stream
 
-**Status: Pending**
+**Status: Done**
 
 ### Context
 

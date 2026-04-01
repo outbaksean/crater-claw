@@ -79,6 +79,53 @@ public sealed class AgenticStreamEndpointTests
     }
 
     [Fact]
+    public async Task PostAgenticStream_WithShowThinking_EmitsThinkingEvents()
+    {
+        using var factory = MakeFactory(new FakeAgenticExecutionService(
+            DefaultResponse,
+            chunks: ["Hello"],
+            thinkingChunks: ["I should greet the user."]));
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/providers/test/agentic/stream", new
+        {
+            modelName = "test-model",
+            prompt = "say hello",
+            profileId = "no-tools",
+            showThinking = true,
+        });
+
+        response.EnsureSuccessStatusCode();
+        var events = ParseSseEvents(await response.Content.ReadAsStringAsync()).ToList();
+
+        Assert.Contains(events, e =>
+            e.GetProperty("type").GetString() == "thinking" &&
+            e.GetProperty("content").GetString() == "I should greet the user.");
+    }
+
+    [Fact]
+    public async Task PostAgenticStream_WithoutShowThinking_NoThinkingEvents()
+    {
+        using var factory = MakeFactory(new FakeAgenticExecutionService(
+            DefaultResponse,
+            chunks: ["Hello"],
+            thinkingChunks: ["I should greet the user."]));
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/providers/test/agentic/stream", new
+        {
+            modelName = "test-model",
+            prompt = "say hello",
+            profileId = "no-tools",
+        });
+
+        response.EnsureSuccessStatusCode();
+        var events = ParseSseEvents(await response.Content.ReadAsStringAsync()).ToList();
+
+        Assert.DoesNotContain(events, e => e.GetProperty("type").GetString() == "thinking");
+    }
+
+    [Fact]
     public async Task PostAgenticStream_UnknownProvider_Returns404()
     {
         using var factory = MakeFactory(new FakeAgenticExecutionService(DefaultResponse));

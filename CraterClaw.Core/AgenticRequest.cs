@@ -8,4 +8,5 @@ public sealed record AgenticRequest(
     IReadOnlyList<KernelPlugin> Plugins,
     int MaxIterations,
     Func<string, Task>? StreamChunk = null,
+    Func<string, Task>? StreamThinkingChunk = null,
     string? SystemPrompt = null);
