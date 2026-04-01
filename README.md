@@ -14,6 +14,7 @@ The console harness supports:
 - Preferred provider and model defaults applied from the selected profile; warnings printed when the preferred value is not available
 - Plugin function listing: after selecting a profile, the console displays the available kernel functions by name and description
 - Agentic task execution: after selecting a profile and model, enter a task prompt to run the SK agentic loop with the selected profile's plugins; tool invocations and the final response are displayed
+- Thinking mode: before each agentic run, a `[y/N]` prompt controls whether the model reasons before responding; when enabled, thinking is shown in dark gray and sent to Ollama as `"think": true`; when disabled, `"think": false` is sent so the model skips the reasoning phase entirely
 
 The Vue frontend supports:
 
@@ -22,7 +23,7 @@ The Vue frontend supports:
 - Interactive chat (single-turn prompt/response)
 - Behavior profile selection
 - Preferred provider and model defaults applied automatically when a profile is selected; warnings shown inline when the preferred value is not available
-- Agentic task panel (shown when provider + model + profile are all selected)
+- Agentic task panel (shown when provider + model + profile are all selected) with a "show thinking" checkbox; when enabled, thinking tokens stream in a collapsible block above the response and `"think": true` is sent to Ollama
 
 Configuration is layered: `craterclaw.json` (committed, no secrets) -> dotnet user secrets (dev) -> OS environment variables (deployment). Sensitive values such as plugin credentials are stored outside the repository.
 
@@ -282,4 +283,5 @@ The console runs in the integrated terminal so interactive prompts work normally
 5. **Prompt** - enter a prompt and receive a response.
 6. **Profile selection** - numbered list of behavior profiles; press Enter to skip.
 7. **Plugin function listing** - for profiles with permitted plugins (e.g. `qbittorrent-manager`), lists the available kernel functions by name and description. Profiles with no plugins (e.g. `no-tools`) display a "no functions available" message.
-8. **Task prompt** - enter a task and the agentic loop runs with the selected model and profile plugins. Each tool called is shown as `Tool: {name}`. The final response is shown under `Response:` followed by a tool invocation count. If the model hit the iteration limit before finishing, `(iteration limit reached)` is displayed.
+8. **Show thinking** - `[y/N]` prompt before the task prompt. If `y`, thinking tokens are displayed in dark gray before the response and the model reasons before answering. If `n` (or blank), `"think": false` is sent to Ollama and the model skips reasoning entirely.
+9. **Task prompt** - enter a task and the agentic loop runs with the selected model and profile plugins. Each tool called is shown as `Tool: {name}`. The final response is shown under `Response:` followed by a tool invocation count. If the model hit the iteration limit before finishing, `(iteration limit reached)` is displayed.

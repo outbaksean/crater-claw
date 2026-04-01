@@ -37,6 +37,8 @@ internal sealed class SemanticKernelAgenticExecutionService(
         var chatService = kernel.GetRequiredService<IChatCompletionService>();
         var finishReason = AgenticFinishReason.Completed;
 
+        OllamaThinkingContext.ThinkingEnabled.Value = request.StreamThinkingChunk is not null;
+
         for (var iteration = 0; iteration < request.MaxIterations; iteration++)
         {
             _aiLogger.LogDebug("Iteration {Iteration}: sending {Count} messages to LLM", iteration, chatHistory.Count);
