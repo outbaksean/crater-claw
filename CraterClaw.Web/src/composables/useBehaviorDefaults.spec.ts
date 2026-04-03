@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { useBehaviorDefaults } from './useBehaviorDefaults'
 import type { ProviderEndpoint, ModelItem, BehaviorProfile } from '../api/types'
 
@@ -91,6 +91,48 @@ describe('useBehaviorDefaults', () => {
     expect(selectModel).not.toHaveBeenCalled()
     expect(behaviorWarnings.value).toHaveLength(1)
     expect(behaviorWarnings.value[0]).toContain('nonexistent-model')
+  })
+
+  it('selects model and clears warning when models load after profile is applied', async () => {
+    const selectProvider = vi.fn()
+    const selectModel = vi.fn()
+    const modelsRef = ref<ModelItem[]>([])
+    const { applyProfileDefaults, behaviorWarnings } = useBehaviorDefaults(
+      ref(providers),
+      modelsRef,
+      selectProvider,
+      selectModel,
+    )
+
+    applyProfileDefaults(makeProfile({ preferredModelName: 'llama3.2' }))
+    expect(selectModel).not.toHaveBeenCalled()
+    expect(behaviorWarnings.value).toHaveLength(1)
+
+    modelsRef.value = models
+    await nextTick()
+
+    expect(selectModel).toHaveBeenCalledWith(models[0])
+    expect(behaviorWarnings.value).toHaveLength(0)
+  })
+
+  it('clears pending model when a new profile is applied', async () => {
+    const selectProvider = vi.fn()
+    const selectModel = vi.fn()
+    const modelsRef = ref<ModelItem[]>([])
+    const { applyProfileDefaults } = useBehaviorDefaults(
+      ref(providers),
+      modelsRef,
+      selectProvider,
+      selectModel,
+    )
+
+    applyProfileDefaults(makeProfile({ preferredModelName: 'llama3.2' }))
+    applyProfileDefaults(makeProfile())
+
+    modelsRef.value = models
+    await nextTick()
+
+    expect(selectModel).not.toHaveBeenCalled()
   })
 
   it('clears warnings from previous profile when new profile is applied', () => {

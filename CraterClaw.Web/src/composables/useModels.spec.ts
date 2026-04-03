@@ -25,7 +25,7 @@ describe('useModels', () => {
     expect(mockGetModels).toHaveBeenCalledWith('local')
   })
 
-  it('fetchModels resets models and selectedModel before fetching', async () => {
+  it('clears selectedModel when the selected model is not in the new list', async () => {
     const initial: ModelItem[] = [{ name: 'old', sizeBytes: 0, modifiedAt: '' }]
     mockGetModels.mockResolvedValueOnce(initial)
 
@@ -39,6 +39,19 @@ describe('useModels', () => {
 
     expect(models.value).toEqual(next)
     expect(selectedModel.value).toBeNull()
+  })
+
+  it('preserves selectedModel when the selected model is still in the new list', async () => {
+    const model: ModelItem = { name: 'qwen3:8b', sizeBytes: 0, modifiedAt: '' }
+    mockGetModels.mockResolvedValue([model])
+
+    const { selectedModel, fetchModels, selectModel } = useModels()
+    await fetchModels('local')
+    selectModel(model)
+
+    await fetchModels('local')
+
+    expect(selectedModel.value).toEqual(model)
   })
 
   it('fetchModels sets error on failure', async () => {

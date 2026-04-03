@@ -2,8 +2,6 @@ import type {
   ProviderEndpoint,
   ProviderStatus,
   ModelItem,
-  ExecutionRequest,
-  ExecutionResponse,
   BehaviorProfile,
   McpServer,
   McpAvailability,
@@ -46,13 +44,6 @@ export function getProviderStatus(name: string): Promise<ProviderStatus> {
 
 export function getModels(providerName: string): Promise<ModelItem[]> {
   return get(`/api/providers/${encodeURIComponent(providerName)}/models`)
-}
-
-export function postExecute(
-  providerName: string,
-  request: ExecutionRequest,
-): Promise<ExecutionResponse> {
-  return post(`/api/providers/${encodeURIComponent(providerName)}/execute`, request)
 }
 
 export function getProfiles(): Promise<BehaviorProfile[]> {

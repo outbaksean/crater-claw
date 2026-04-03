@@ -14,24 +14,6 @@ export interface ModelItem {
   modifiedAt: string
 }
 
-export interface ExecutionRequest {
-  modelName: string
-  messages: MessageItem[]
-  temperature?: number
-  maxTokens?: number
-}
-
-export interface MessageItem {
-  role: 'User' | 'Assistant'
-  content: string
-}
-
-export interface ExecutionResponse {
-  content: string
-  modelName: string
-  finishReason: string
-}
-
 export interface PluginBinding {
   name: string
   tools: string[]

@@ -47,6 +47,10 @@ The Jellyfin LXC on Proxmox is set up manually for the initial `media-server` ch
 
 `DefaultKernelFactory` previously created a `new HttpClient()` per kernel, leaking socket connections. Changed to inject `IHttpClientFactory` so the underlying `SocketsHttpHandler` is pooled and reused.
 
+### web-ux-refactor-2 and investigate-child-agents before media/arr stack
+
+The media and arr stack checkpoints are deferred until `web-ux-refactor-2` and `investigate-child-agents` are complete. The child agents research will inform how behaviors are structured going forward, which may affect the design of media behaviors. The web UX refactor will establish the interaction patterns that future behaviors surface through. Proceeding with media work before these are resolved risks rework.
+
 ---
 
 ## Pending

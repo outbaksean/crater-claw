@@ -150,6 +150,29 @@ Update vscode config to not report problems on md files not in the workspace
 
 Audit behavior definitions for sensitive data — system prompts may reference personal details, internal instructions, or other content that should not be committed. Determine whether behavior definitions (or parts of them) should be stored in user secrets or environment variables rather than craterclaw.json. Implement whatever secret handling approach is appropriate and document the pattern for future behaviors.
 
+### web-ux-refactor-2
+
+**Type: Code**
+
+Refactor the web ux with better placement of providers, models, behavior, chat boxes
+
+### investigate-child-agents
+
+**Type: Research**
+
+Investigate allowing the model to spawn subagents. The output will either be checkpoints or a notes file
+
+### linux-aliases
+
+**Type: Code**
+
+Bash/zsh equivalent of the powershell-aliases module. Shell function file installed via install.sh to ~/.local/share/craterclaw/, sourced from .bashrc/.zshrc. Same craterclaw subcommand interface as the PowerShell module.
+Depends on: powershell-aliases
+
+---
+
+*Media and arr stack checkpoints below are deferred until web-ux-refactor-2 and investigate-child-agents are complete. See decisions.md.*
+
 ### ollama-lan
 
 **Type: Infrastructure**
@@ -238,22 +261,3 @@ Depends on: media-server, media-library-config
 
 Terraform module and cloud-init config to provision the Jellyfin LXC on Proxmox, replacing the manual setup from `media-server`. Includes: container resource definitions, bind mount for the external drive, network config, and cloud-init for Jellyfin + Samba installation.
 Depends on: media-server
-
-### web-ux-refactor-2
-
-**Type: Code**
-
-Refactor the web ux with better placement of providers, models, behavior, chat boxes
-
-### investigate-child-agents
-
-**Type: Research**
-
-Investigate allowing the model to spawn subagents. The output will either be checkpoints or a notes file
-
-### linux-aliases
-
-**Type: Code**
-
-Bash/zsh equivalent of the powershell-aliases module. Shell function file installed via install.sh to ~/.local/share/craterclaw/, sourced from .bashrc/.zshrc. Same craterclaw subcommand interface as the PowerShell module.
-Depends on: powershell-aliases
