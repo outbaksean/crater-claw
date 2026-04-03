@@ -12,11 +12,15 @@ export function useModels() {
     loading.value = true
     error.value = null
     models.value = []
-    selectedModel.value = null
     try {
-      models.value = await getModels(providerName)
+      const loaded = await getModels(providerName)
+      models.value = loaded
+      if (selectedModel.value && !loaded.some((m) => m.name === selectedModel.value!.name)) {
+        selectedModel.value = null
+      }
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load models'
+      selectedModel.value = null
     } finally {
       loading.value = false
     }

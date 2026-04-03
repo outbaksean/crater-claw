@@ -122,22 +122,23 @@ Vue 3 TypeScript frontend (Vite, Vitest). Consumes `CraterClaw.Api` over HTTP. A
 
 ### Implemented
 
-- `getProviders`, `getProviderStatus`, `getModels` in `client.ts`.
+- `getProviders`, `getProviderStatus`, `getModels`, `postAgentic`, `streamAgentic` in `client.ts`.
 - `useProviders` composable: fetches provider list, tracks selected provider, fetches and exposes status.
 - `useModels` composable: fetches models for selected provider, tracks selected model.
-- `useExecution` composable: manages conversation message history, calls `postExecute`, appends user and assistant turns.
-- `InteractiveChat` component: input form, conversation history display, loading/error state.
 - `useProfiles` composable: fetches profile list, tracks selected profile.
 - `useAgentic` composable: wraps `streamAgentic`; exposes `content`, `thinking` (builds up from thinking events), `showThinking` (boolean ref, default false; when true, `run` adds `showThinking: true` to the request), `finishReason`, `toolsInvoked`, `loading`, `error`, `run(providerName, request)`, and `cancel()`. Used by `AgenticPanel`.
 - `useBehaviorDefaults` composable: takes `providers` and `models` refs and `selectProvider`/`selectModel` callbacks. `applyProfileDefaults(profile)` applies preferred provider/model defaults from the profile, calling the appropriate select function if the preferred value is found, or pushing a warning string to `behaviorWarnings` if not. Warnings are cleared on each call.
 - `ProfileSelector` component: numbered list of profiles with name and description.
 - `AgenticPanel` component: task prompt input with a "show thinking" checkbox. Displays thinking tokens in a collapsed `<details>` block (`.thinking-content`) when present. Displays response content, finish reason, and tools invoked list.
-- `App.vue`: provider list, status indicator, model list, chat panel, profile selector (with inline behavior warnings), agentic panel (shown when provider + model + profile are all selected). When a profile is selected, `applyProfileDefaults` is called to apply preferred provider/model and surface warnings.
+- `AppTaskbar` component: persistent top taskbar with three expandable dropdown selectors (profile, provider, model). Profile selector is visually prominent (left accent border). Provider selector shows an inline reachability pill. Model selector is disabled when no provider is selected. Behavior warnings render below the taskbar row. Emits `selectProvider`, `selectModel`, `selectProfile`.
+- `App.vue`: two-zone layout — `AppTaskbar` pinned at the top, agentic panel in the main content area. Shows a placeholder when no provider or model is selected. When a profile is selected, `applyProfileDefaults` is called to apply preferred provider/model and surface warnings into the taskbar.
 
 ### API Types (`src/api/types.ts`)
 
+- `ProviderEndpoint`, `ProviderStatus`, `ModelItem` — mirror the provider API responses.
 - `BehaviorProfile` — `id`, `name`, `description`, `systemPrompt`, `preferredProviderName` (null or string), `preferredModelName` (null or string), `plugins` (array of `PluginBinding`).
 - `PluginBinding` — `name`, `tools` (string array).
+- `AgenticRequest`, `AgenticResponse`, `AgenticSseChunk`, `AgenticSseThinking`, `AgenticSseDone`, `AgenticSseEvent` — agentic execution request/response and SSE event types.
 
 ESLint is configured via `eslint.config.mjs` using flat config format with `eslint-plugin-vue` (flat/essential), `@vue/eslint-config-typescript`, and `@vue/eslint-config-prettier`. Vitest globals (`describe`, `it`, `test`, `expect`, `vi`, etc.) are registered for `*.spec.ts` and `*.test.ts` files. Prettier is configured with `endOfLine: lf` for cross-platform consistency. `npm run lint` and `npm run lint:fix` are available.
 

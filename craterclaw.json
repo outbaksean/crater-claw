@@ -21,8 +21,8 @@
             "name": "No Tools",
             "description": "General-purpose conversation with no external tools.",
             "systemPrompt": "You are a helpful assistant.",
-            "preferredProviderName": null,
-            "preferredModelName": null,
+            "preferredProviderName": "wslWithLocalhostIp",
+            "preferredModelName": "qwen3:8b",
             "plugins": []
         },
         "qbittorrent-seedbox": {

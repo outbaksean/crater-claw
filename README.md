@@ -18,12 +18,9 @@ The console harness supports:
 
 The Vue frontend supports:
 
-- Provider list with reachability status indicator
-- Model list for the active provider
-- Interactive chat (single-turn prompt/response)
-- Behavior profile selection
-- Preferred provider and model defaults applied automatically when a profile is selected; warnings shown inline when the preferred value is not available
-- Agentic task panel (shown when provider + model + profile are all selected) with a "show thinking" checkbox; when enabled, thinking tokens stream in a collapsible block above the response and `"think": true` is sent to Ollama
+- Persistent top taskbar with provider, model, and behavior profile selectors always accessible
+- Selecting a behavior profile silently applies its preferred provider and model; warnings appear below the taskbar when preferred values are unavailable
+- Agentic task panel as the main content area with streaming responses, a "show thinking" checkbox, and thinking tokens in a collapsible block
 
 Configuration is layered: `craterclaw.json` (committed, no secrets) -> dotnet user secrets (dev) -> OS environment variables (deployment). Sensitive values such as plugin credentials are stored outside the repository.
 
