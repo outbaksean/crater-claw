@@ -137,6 +137,36 @@ Depends on: logging-breakout-ollama-responses
 
 Surface thinking tokens emitted by thinking-capable Ollama models (e.g. qwen3). Thinking tokens detected from `chunk.InnerContent as ChatResponseStream`. `AgenticRequest.StreamThinkingChunk` callback delivers tokens. Console shows thinking in dark gray with a `[y/N]` toggle before each run. API stream emits `{"type":"thinking"}` SSE events when `showThinking: true`. Vue `AgenticPanel` has a checkbox and displays thinking in a collapsible `<details>` block. Note: the SK Ollama connector does not expose an API to enable/disable thinking at the request level; thinking is model-dependent.
 
+### web-ux-refactor-2
+
+**Type: Code**
+
+Replaced the vertical panel-reveal layout with a two-zone design: persistent top taskbar (`AppTaskbar`) with expandable dropdown selectors for profile, provider, and model; agentic panel as the sole interaction mode in the main content area. Removed interactive (single-turn) execution mode — superseded by agentic with no-tools profile. Behavior profile selection silently applies preferred provider/model; deferred model selection resolves when models load after a provider switch. `fetchModels` preserves `selectedModel` when the model is still present in the reloaded list.
+
+### investigate-child-agents
+
+**Type: Research**
+
+Investigated SK agent orchestration support with Ollama. `ChatCompletionAgent` from `Microsoft.SemanticKernel.Agents.Core` works with any `IChatCompletionService` including Ollama; `AgentGroupChat` is deprecated (replaced by experimental orchestration packages). Recommended pattern: a `KernelFunction` wrapper around `IAgenticExecutionService` — no new packages required. Proposed `child-agent-function` checkpoint as a building block; behavior wiring deferred until media workflows provide a concrete use case. Notes in `Specs/child-agents-notes.md`.
+
+### ollama-context-config
+
+**Type: Code**
+
+Added optional `maxContext` (int?) to behavior profiles in `craterclaw.json`. Threads through `BehaviorEntry` → `BehaviorProfile` → `AgenticRequest` → `OllamaPromptExecutionSettings` as `num_ctx`. Default: null (Ollama default). Addresses context window degradation in long-running or parent behaviors that accumulate large chat histories.
+
+### child-agent-function
+
+**Type: Code**
+
+Added optional `hidden` flag to behavior profiles — hidden profiles are excluded from `GetAll()` (API/UI) but resolvable by `GetById()` (child agent lookup). `SubAgentPlugin` class registered as a `"subagent"` plugin type in `DefaultPluginRegistry`. Child agent identified by behavior profile name; profile supplies model, system prompt, max context, and plugins. `AgenticRequest` gains `int Depth = 0`; `ExecuteAsync` enforces a hardcoded max depth (2) and returns an error result beyond it. `PluginExecutionContext` (AsyncLocal) carries the current endpoint, depth, and child streaming callbacks into plugins. Child output streams to the UI via `child-start`, `child-chunk`, and `child-thinking` SSE events. Each scrollable area (thinking, child output, response) auto-scrolls to the bottom during streaming and stops on manual scroll-up.
+
+### story-writing-behavior
+
+**Type: Code**
+
+Three behavior profiles wiring up the child-agent POC: `story-director` (two subagent plugins), `story-planner` (hidden child), `story-writer` (hidden child). Config-only checkpoint — no C# changes. Demonstrates a three-model creative pipeline with streamed intermediate outputs visible in the web UI.
+
 ## Planned
 
 ### vscode-prettier-config
@@ -171,7 +201,7 @@ Depends on: powershell-aliases
 
 ---
 
-*Media and arr stack checkpoints below are deferred until web-ux-refactor-2 and investigate-child-agents are complete. See decisions.md.*
+_Media and arr stack checkpoints below are deferred until web-ux-refactor-2 and investigate-child-agents are complete. See decisions.md._
 
 ### ollama-lan
 
@@ -261,3 +291,9 @@ Depends on: media-server, media-library-config
 
 Terraform module and cloud-init config to provision the Jellyfin LXC on Proxmox, replacing the manual setup from `media-server`. Includes: container resource definitions, bind mount for the external drive, network config, and cloud-init for Jellyfin + Samba installation.
 Depends on: media-server
+
+### agent-framework-migration
+
+**Type: Code**
+
+Migrate `CraterClaw.Core`, `CraterClaw.Console`, and `CraterClaw.Api` from Semantic Kernel to the Microsoft Agent Framework once it reaches stable release. Agent Framework is the announced successor to SK and AutoGen, supports Ollama, simplifies tool registration (plain methods, no `[KernelFunction]` required), and provides a Workflows API better suited to multi-agent patterns. Deferred until the framework exits public preview. See `decisions.md` and `Specs/child-agents-notes.md`.

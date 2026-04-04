@@ -19,6 +19,7 @@ public sealed class PluginRegistryTests
                     },
                     NullLogger<QBitTorrentPlugin>.Instance)
             },
+            new Dictionary<string, Func<IReadOnlyDictionary<string, string>, KernelPlugin>>(),
             NullLogger<DefaultPluginRegistry>.Instance);
 
     private static PluginBinding Binding(string name, IReadOnlyList<string> tools) =>
@@ -107,6 +108,7 @@ public sealed class PluginRegistryTests
                         NullLogger<QBitTorrentPlugin>.Instance);
                 }
             },
+            new Dictionary<string, Func<IReadOnlyDictionary<string, string>, KernelPlugin>>(),
             NullLogger<DefaultPluginRegistry>.Instance);
         var binding = new PluginBinding("qbittorrent", [],
             new Dictionary<string, string> { ["baseUrl"] = "http://localhost:8080", ["username"] = "admin" });

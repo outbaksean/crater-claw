@@ -16,11 +16,13 @@ internal sealed class BehaviorProfileService : IBehaviorProfileService
                 kvp.Value.SystemPrompt,
                 kvp.Value.PreferredProviderName,
                 kvp.Value.PreferredModelName,
+                kvp.Value.MaxContext,
+                kvp.Value.Hidden,
                 kvp.Value.Plugins.Select(p => new PluginBinding(p.Name, [.. p.Tools], p.Config)).ToList()))
             .ToList();
     }
 
-    public IReadOnlyList<BehaviorProfile> GetAll() => _profiles;
+    public IReadOnlyList<BehaviorProfile> GetAll() => _profiles.Where(p => !p.Hidden).ToList();
 
     public BehaviorProfile? GetById(string id) =>
         _profiles.FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase));

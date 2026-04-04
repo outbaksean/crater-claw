@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.SemanticKernel;
 
 namespace CraterClaw.Core;
 
@@ -44,6 +45,8 @@ public static class ServiceCollectionExtensions
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
             var pluginLogger = sp.GetRequiredService<ILogger<QBitTorrentPlugin>>();
             var registryLogger = sp.GetRequiredService<ILogger<DefaultPluginRegistry>>();
+            var profileService = sp.GetRequiredService<IBehaviorProfileService>();
+
             var factories = new Dictionary<string, Func<IReadOnlyDictionary<string, string>, object>>
             {
                 ["qbittorrent"] = config => new QBitTorrentPlugin(
@@ -56,7 +59,26 @@ public static class ServiceCollectionExtensions
                     },
                     pluginLogger)
             };
-            return new DefaultPluginRegistry(factories, registryLogger);
+
+            var pluginFactories = new Dictionary<string, Func<IReadOnlyDictionary<string, string>, KernelPlugin>>
+            {
+                ["subagent"] = config =>
+                {
+                    var profileId = config.GetValueOrDefault("profileId") ?? string.Empty;
+                    var functionName = config.GetValueOrDefault("functionName") ?? "RunSubAgent";
+                    var description = config.GetValueOrDefault("description") ?? string.Empty;
+                    var agenticService = sp.GetRequiredService<IAgenticExecutionService>();
+                    var registry = sp.GetRequiredService<IPluginRegistry>();
+                    var subAgent = new SubAgentPlugin(profileId, functionName, description, profileService, agenticService, registry);
+                    var function = KernelFunctionFactory.CreateFromMethod(
+                        subAgent.RunAsync,
+                        functionName: functionName,
+                        description: description);
+                    return KernelPluginFactory.CreateFromFunctions(functionName, [function]);
+                }
+            };
+
+            return new DefaultPluginRegistry(factories, pluginFactories, registryLogger);
         });
 
         return services;

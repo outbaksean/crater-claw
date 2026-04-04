@@ -340,8 +340,9 @@ try
                                     Console.ResetColor();
                                     return Task.CompletedTask;
                                 }
-                                : null,
-                            SystemPrompt: selectedProfile.SystemPrompt);
+                        : null,
+                            SystemPrompt: selectedProfile.SystemPrompt,
+                            MaxContext: selectedProfile.MaxContext);
 
                         Console.WriteLine("Response:");
                         var agenticResponse = await agenticExecutionService.ExecuteAsync(

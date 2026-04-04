@@ -52,6 +52,7 @@ The API's interactive execution endpoint is not touched — backend-only removal
 ### Contract
 
 No new types. Removals:
+
 - `InteractiveChat.vue` and `InteractiveChat.spec.ts`
 - `useExecution.ts` and `useExecution.spec.ts`
 - `ExecutionRequest`, `ExecutionResponse`, `MessageItem` from `api/types.ts` (unused after removal)
@@ -97,32 +98,34 @@ Redesign `App.vue` into a two-zone layout: a persistent top taskbar containing a
 ### Contract
 
 **`Taskbar.vue` props:**
+
 ```ts
 interface TaskbarProps {
-  providers: ProviderEndpoint[]
-  selectedProvider: ProviderEndpoint | null
-  providerStatus: ProviderStatus | null
-  loadingProviders: boolean
-  loadingStatus: boolean
+    providers: ProviderEndpoint[];
+    selectedProvider: ProviderEndpoint | null;
+    providerStatus: ProviderStatus | null;
+    loadingProviders: boolean;
+    loadingStatus: boolean;
 
-  models: ModelItem[]
-  selectedModel: ModelItem | null
-  loadingModels: boolean
+    models: ModelItem[];
+    selectedModel: ModelItem | null;
+    loadingModels: boolean;
 
-  profiles: BehaviorProfile[]
-  selectedProfile: BehaviorProfile | null
-  loadingProfiles: boolean
+    profiles: BehaviorProfile[];
+    selectedProfile: BehaviorProfile | null;
+    loadingProfiles: boolean;
 
-  warnings: string[]
+    warnings: string[];
 }
 ```
 
 **`Taskbar.vue` emits:**
+
 ```ts
 interface TaskbarEmits {
-  selectProvider: [provider: ProviderEndpoint]
-  selectModel: [model: ModelItem]
-  selectProfile: [profile: BehaviorProfile]
+    selectProvider: [provider: ProviderEndpoint];
+    selectModel: [model: ModelItem];
+    selectProfile: [profile: BehaviorProfile];
 }
 ```
 
@@ -131,6 +134,7 @@ interface TaskbarEmits {
 ### Tests
 
 `CraterClaw.Web/src/components/AppTaskbar.spec.ts`:
+
 - Renders provider list with selected state.
 - Renders model list with selected state; list is empty and disabled when no provider selected.
 - Renders profile list with selected state.
@@ -144,10 +148,10 @@ interface TaskbarEmits {
 
 1. Create `CraterClaw.Web/src/components/Taskbar.vue` implementing the contract above. Layout: single horizontal row of three selector dropdowns/popovers or compact inline lists. Provider selector shows a reachability pill next to the selected provider name. Warnings render below the taskbar row.
 2. Refactor `App.vue`:
-   - Remove all panel markup.
-   - Add a sticky/fixed top taskbar region containing `<Taskbar>`.
-   - Add a main content region below the taskbar containing `<AgenticPanel>` (shown when provider and model are selected; otherwise a short placeholder).
-   - Wire `useBehaviorDefaults` warnings into the `warnings` prop.
+    - Remove all panel markup.
+    - Add a sticky/fixed top taskbar region containing `<Taskbar>`.
+    - Add a main content region below the taskbar containing `<AgenticPanel>` (shown when provider and model are selected; otherwise a short placeholder).
+    - Wire `useBehaviorDefaults` warnings into the `warnings` prop.
 3. Adjust `AgenticPanel.vue` if its outer sizing assumptions change (it currently relies on being inside a `.panel` div).
 4. Update global layout styles in `App.vue` — the current `max-width: 680px` column layout no longer applies; the taskbar spans full width and the content area uses a reasonable max-width for the chat.
 

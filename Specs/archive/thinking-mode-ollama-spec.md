@@ -11,6 +11,7 @@ Thinking-capable models (e.g., qwen3) generate thinking tokens automatically. Th
 The SK Ollama connector (1.73.0-alpha) does not expose a `Think` control property on `OllamaPromptExecutionSettings`. The `ExtensionData` dictionary is not forwarded to the underlying OllamaSharp `ChatRequest`, so setting `AdditionalProperties["think"]` has no effect. The checkpoint description assumed this API existed; it does not. This spec surfaces thinking that is already present in the stream. API-level thinking control (enabling/disabling at the Ollama request level) is deferred to a future checkpoint.
 
 Thinking content is accessible from each streaming chunk via:
+
 ```csharp
 if (chunk.InnerContent is OllamaSharp.Models.Chat.ChatResponseStream stream)
     var thinking = stream.Message?.Thinking; // null when not a thinking token
@@ -35,6 +36,7 @@ Add `StreamThinkingChunk` to `AgenticRequest` (parallel to `StreamChunk`). In th
 ### External API Verification
 
 Before implementing, verify in `CraterClaw.Core`:
+
 - `OllamaSharp.Models.Chat.ChatResponseStream` is accessible after adding the direct package reference.
 - `chunk.InnerContent is OllamaSharp.Models.Chat.ChatResponseStream` succeeds at runtime during a streaming call to a thinking model.
 - `stream.Message?.Thinking` is non-null/non-empty during thinking chunks and null/empty otherwise.
@@ -43,17 +45,20 @@ Before implementing, verify in `CraterClaw.Core`:
 ### Contract
 
 **`CraterClaw.Core/CraterClaw.Core.csproj`**
+
 - Add `<PackageReference Include="OllamaSharp" Version="5.2.2" />`.
 
 **`CraterClaw.Core/AgenticRequest.cs`**
+
 - Add `Func<string, Task>? StreamThinkingChunk = null` parameter after `StreamChunk`.
 
 **`CraterClaw.Core/SemanticKernelAgenticExecutionService.cs`**
+
 - Replace `PromptExecutionSettings` with `OllamaPromptExecutionSettings`.
 - In the streaming branch, after the `foreach` chunk loop, add thinking detection:
-  - Cast `chunk.InnerContent` to `OllamaSharp.Models.Chat.ChatResponseStream`.
-  - If `stream?.Message?.Thinking` is non-null and non-empty, call `await request.StreamThinkingChunk(thinking)`.
-  - Only call `StreamChunk` when `chunk.Content` is non-null and non-empty (guarding against empty string during thinking phase).
+    - Cast `chunk.InnerContent` to `OllamaSharp.Models.Chat.ChatResponseStream`.
+    - If `stream?.Message?.Thinking` is non-null and non-empty, call `await request.StreamThinkingChunk(thinking)`.
+    - Only call `StreamChunk` when `chunk.Content` is non-null and non-empty (guarding against empty string during thinking phase).
 
 The `contentBuilder` accumulates only actual content (not thinking tokens). The final `content` extraction from `chatHistory` is unchanged.
 
@@ -75,6 +80,7 @@ No user-visible changes.
 ### Current Architecture Sync
 
 Update `current-architecture.md`:
+
 - `AgenticRequest` has `StreamThinkingChunk: Func<string, Task>?`.
 - `SemanticKernelAgenticExecutionService` uses `OllamaPromptExecutionSettings`.
 - Note OllamaSharp direct package reference and the `InnerContent` cast pattern.
@@ -178,10 +184,12 @@ The `thinking` events arrive before (or interleaved with) `chunk` events, depend
 ### Contract
 
 **`CraterClaw.Api/Models/ApiModels.cs`**
+
 - Add `record AgenticSseThinking(string Type, string Content)`.
 - Add `bool ShowThinking = false` to `AgenticStreamApiRequest` (a new record type identical to `AgenticApiRequest` plus `ShowThinking`). Alternatively, add `bool? ShowThinking` to the existing `AgenticApiRequest` record used by the stream endpoint.
 
 For clarity, add `bool? ShowThinking` to `AgenticApiRequest` (nullable, defaults to `false` when absent):
+
 ```csharp
 public sealed record AgenticApiRequest(
     string ModelName,
@@ -192,34 +200,44 @@ public sealed record AgenticApiRequest(
 ```
 
 **`CraterClaw.Api/Endpoints/ProvidersEndpoints.cs`** — update `POST /api/providers/{name}/agentic/stream`:
+
 - Pass `StreamThinkingChunk` when `request.ShowThinking == true`:
-  ```csharp
-  StreamThinkingChunk: request.ShowThinking == true
-      ? async chunk =>
-        {
-            await httpContext.Response.WriteAsync(
-                $"data: {JsonSerializer.Serialize(new AgenticSseThinking("thinking", chunk), SseJsonOptions)}\n\n",
-                cancellationToken);
-            await httpContext.Response.Body.FlushAsync(cancellationToken);
-        }
-      : null,
-  ```
+    ```csharp
+    StreamThinkingChunk: request.ShowThinking == true
+        ? async chunk =>
+          {
+              await httpContext.Response.WriteAsync(
+                  $"data: {JsonSerializer.Serialize(new AgenticSseThinking("thinking", chunk), SseJsonOptions)}\n\n",
+                  cancellationToken);
+              await httpContext.Response.Body.FlushAsync(cancellationToken);
+          }
+        : null,
+    ```
 
 **`CraterClaw.Web/src/api/types.ts`** — add:
+
 ```typescript
-export interface AgenticSseThinking { type: 'thinking'; content: string }
-export type AgenticSseEvent = AgenticSseChunk | AgenticSseDone | AgenticSseThinking
+export interface AgenticSseThinking {
+    type: "thinking";
+    content: string;
+}
+export type AgenticSseEvent =
+    | AgenticSseChunk
+    | AgenticSseDone
+    | AgenticSseThinking;
 ```
 
 **`CraterClaw.Web/src/api/client.ts`** — update `AgenticRequest` type to include `showThinking?: boolean`.
 
 **`CraterClaw.Web/src/composables/useAgentic.ts`** — add:
+
 - `thinking: Ref<string>` — accumulates thinking tokens.
 - `showThinking: Ref<boolean>` — user toggle, default `false`.
 - Reset `thinking` to `''` on each `run()` call.
 - Append `AgenticSseThinking` content to `thinking`.
 
 **`CraterClaw.Web/src/components/AgenticPanel.vue`** — add:
+
 - A "Show thinking" checkbox that binds to `agentic.showThinking`.
 - When `showThinking` is true, pass `showThinking: true` in the agentic request.
 - Display `agentic.thinking` in a visually distinct block (e.g., smaller text, muted color) above the response content when non-empty. Use a `<details>` element so it is collapsed by default.
@@ -227,18 +245,22 @@ export type AgenticSseEvent = AgenticSseChunk | AgenticSseDone | AgenticSseThink
 ### Tests
 
 **`CraterClaw.Api.Tests/AgenticStreamEndpointTests.cs`** — add:
+
 - `PostAgenticStream_WithShowThinking_EmitsThinkingEvents` — fake service calls `StreamThinkingChunk` with a thinking string; assert a `thinking` type SSE event appears in the response.
 - `PostAgenticStream_WithoutShowThinking_NoThinkingEvents` — fake service has thinking content but `showThinking` is false; assert no `thinking` events appear.
 
 Update `FakeAgenticExecutionService` to support calling `StreamThinkingChunk`:
+
 - Add optional `IReadOnlyList<string>? thinkingChunks` constructor parameter.
 - If non-null and `request.StreamThinkingChunk` is not null, call it for each before regular chunks.
 
 **`CraterClaw.Web/src/composables/useAgentic.spec.ts`** — add:
+
 - `accumulates thinking chunks into thinking ref`
 - `thinking is reset on each run`
 
 **`CraterClaw.Web/src/components/AgenticPanel.spec.ts`** — add:
+
 - `passes showThinking true when toggle is checked`
 - `displays thinking content when present`
 
@@ -262,6 +284,7 @@ No user-visible workflow changes — thinking display is additive.
 ### Current Architecture Sync
 
 Update `current-architecture.md`:
+
 - Document `AgenticSseThinking` SSE event type and extended SSE protocol.
 - Document `ShowThinking` field on `AgenticApiRequest`.
 - Document `thinking` ref and `showThinking` toggle in `useAgentic`.

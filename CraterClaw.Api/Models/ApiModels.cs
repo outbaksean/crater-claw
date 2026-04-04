@@ -22,6 +22,9 @@ internal sealed record AgenticApiResponse(string Content, AgenticFinishReason Fi
 internal sealed record PluginBindingApiItem(string Name, IReadOnlyList<string> Tools);
 internal sealed record AgenticSseChunk(string Type, string Content);
 internal sealed record AgenticSseThinking(string Type, string Content);
+internal sealed record AgenticSseChildStart(string Type, string Source, string Prompt);
+internal sealed record AgenticSseChildChunk(string Type, string Source, string Content);
+internal sealed record AgenticSseChildThinking(string Type, string Source, string Content);
 internal sealed record AgenticSseDone(string Type, AgenticFinishReason FinishReason, IReadOnlyList<string> ToolsInvoked);
 
 internal sealed record BehaviorProfileApiItem(

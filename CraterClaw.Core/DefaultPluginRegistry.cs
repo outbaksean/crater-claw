@@ -5,6 +5,7 @@ namespace CraterClaw.Core;
 
 internal sealed class DefaultPluginRegistry(
     IReadOnlyDictionary<string, Func<IReadOnlyDictionary<string, string>, object>> factories,
+    IReadOnlyDictionary<string, Func<IReadOnlyDictionary<string, string>, KernelPlugin>> pluginFactories,
     ILogger<DefaultPluginRegistry> logger) : IPluginRegistry
 {
     public IReadOnlyList<KernelPlugin> Resolve(IEnumerable<PluginBinding> plugins)
@@ -13,6 +14,12 @@ internal sealed class DefaultPluginRegistry(
 
         foreach (var binding in plugins)
         {
+            if (pluginFactories.TryGetValue(binding.Name, out var pluginFactory))
+            {
+                result.Add(pluginFactory(binding.Config));
+                continue;
+            }
+
             if (!factories.TryGetValue(binding.Name, out var factory))
             {
                 logger.LogWarning("Plugin '{PluginName}' is not registered in the plugin registry", binding.Name);

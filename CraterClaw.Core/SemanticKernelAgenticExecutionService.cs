@@ -12,12 +12,27 @@ internal sealed class SemanticKernelAgenticExecutionService(
     ILogger<SemanticKernelAgenticExecutionService> logger,
     ILoggerFactory loggerFactory) : IAgenticExecutionService
 {
+    internal const int MaxChildAgentDepth = 2;
+
     private readonly ILogger _aiLogger = loggerFactory.CreateLogger("CraterClaw.AiTraffic");
+
     public async Task<AgenticResponse> ExecuteAsync(
         ProviderEndpoint endpoint,
         AgenticRequest request,
         CancellationToken cancellationToken)
     {
+        if (request.Depth >= MaxChildAgentDepth)
+        {
+            logger.LogWarning("Agentic execution blocked: depth {Depth} has reached the maximum of {Max}.", request.Depth, MaxChildAgentDepth);
+            return new AgenticResponse("Child agent depth limit reached.", AgenticFinishReason.Completed, []);
+        }
+
+        PluginExecutionContext.CurrentEndpoint.Value = endpoint;
+        PluginExecutionContext.CurrentDepth.Value = request.Depth;
+        PluginExecutionContext.ChildStreamChunk.Value = request.StreamChildChunk;
+        PluginExecutionContext.ChildStreamThinking.Value = request.StreamChildThinking;
+        PluginExecutionContext.ChildStreamStart.Value = request.StreamChildStart;
+
         var kernel = kernelFactory.Create(endpoint, request.ModelName);
 
         foreach (var plugin in request.Plugins)
@@ -33,6 +48,9 @@ internal sealed class SemanticKernelAgenticExecutionService(
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(
                 functions: null, autoInvoke: false, options: null)
         };
+
+        if (request.MaxContext.HasValue)
+            settings.ExtensionData = new Dictionary<string, object> { ["num_ctx"] = request.MaxContext.Value };
 
         var chatService = kernel.GetRequiredService<IChatCompletionService>();
         var finishReason = AgenticFinishReason.Completed;

@@ -12,4 +12,6 @@ public sealed record BehaviorProfile(
     string SystemPrompt,
     string? PreferredProviderName,
     string? PreferredModelName,
+    int? MaxContext,
+    bool Hidden,
     IReadOnlyList<PluginBinding> Plugins);

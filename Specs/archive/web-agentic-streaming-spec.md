@@ -36,19 +36,24 @@ data: {"type":"done","finishReason":"Completed","toolsInvoked":["ListTorrents"]}
 ### Contract
 
 **`CraterClaw.Core/AgenticRequest.cs`**
+
 - `StreamChunk` changes from `Action<string>?` to `Func<string, Task>?`
 
 **`CraterClaw.Core/SemanticKernelAgenticExecutionService.cs`**
+
 - `request.StreamChunk(chunk.Content)` → `await request.StreamChunk(chunk.Content)`
 
 **`CraterClaw.Console/Program.cs`**
+
 - `StreamChunk: Console.Write` → `StreamChunk: chunk => { Console.Write(chunk); return Task.CompletedTask; }`
 
 **`CraterClaw.Api/Models/ApiModels.cs`** — two new SSE event records:
+
 - `AgenticSseChunk(string Type, string Content)`
 - `AgenticSseDone(string Type, AgenticFinishReason FinishReason, IReadOnlyList<string> ToolsInvoked)`
 
 **`CraterClaw.Api/Endpoints/ProvidersEndpoints.cs`** — new endpoint:
+
 - `POST /api/providers/{name}/agentic/stream`
 - Returns `text/event-stream` with `Cache-Control: no-cache`
 - On unknown provider: 404. On unknown profile: 400.
@@ -56,6 +61,7 @@ data: {"type":"done","finishReason":"Completed","toolsInvoked":["ListTorrents"]}
 - Uses `JsonSerializerOptions` with `PropertyNamingPolicy = CamelCase` and `JsonStringEnumConverter`.
 
 **`CraterClaw.Api.Tests/FakeAgenticExecutionService.cs`**
+
 - Add optional `IReadOnlyList<string>? chunks` constructor parameter.
 - If `chunks` is not null and `request.StreamChunk` is not null, call `await request.StreamChunk(chunk)` for each before returning.
 - Make `ExecuteAsync` `async Task<AgenticResponse>`.
@@ -102,13 +108,22 @@ Update `current-architecture.md` — add the streaming endpoint and note `Stream
 ### Contract
 
 **`CraterClaw.Web/src/api/types.ts`** — add:
+
 ```typescript
-export interface AgenticSseChunk { type: 'chunk'; content: string }
-export interface AgenticSseDone { type: 'done'; finishReason: string; toolsInvoked: string[] }
-export type AgenticSseEvent = AgenticSseChunk | AgenticSseDone
+export interface AgenticSseChunk {
+    type: "chunk";
+    content: string;
+}
+export interface AgenticSseDone {
+    type: "done";
+    finishReason: string;
+    toolsInvoked: string[];
+}
+export type AgenticSseEvent = AgenticSseChunk | AgenticSseDone;
 ```
 
 **`CraterClaw.Web/src/api/client.ts`** — add:
+
 ```typescript
 export async function* streamAgentic(
   providerName: string,
@@ -116,14 +131,17 @@ export async function* streamAgentic(
   signal?: AbortSignal,
 ): AsyncGenerator<AgenticSseEvent>
 ```
+
 Reads SSE response body as a stream; splits on `\n\n`; yields parsed `data:` lines.
 
 **`CraterClaw.Web/src/composables/useAgentic.ts`** — new composable:
+
 - Refs: `content`, `finishReason`, `toolsInvoked`, `loading`, `error`
 - `run(providerName, request)` — calls `streamAgentic`, accumulates chunks into `content`, populates `finishReason`/`toolsInvoked` from done event.
 - `cancel()` — aborts the in-flight request.
 
 **`CraterClaw.Web/src/components/AgenticPanel.vue`** — updated:
+
 - Replace inline state with `useAgentic()`.
 - Display `agentic.content` progressively as chunks stream in.
 - Show finish reason and tools after the done event.
@@ -131,12 +149,14 @@ Reads SSE response body as a stream; splits on `\n\n`; yields parsed `data:` lin
 ### Tests
 
 **`CraterClaw.Web/src/composables/useAgentic.spec.ts`** (new):
+
 - `accumulates chunks into content`
 - `sets finishReason and toolsInvoked from done event`
 - `sets error on stream failure`
 - `loading is true during run and false after`
 
 **`CraterClaw.Web/src/components/AgenticPanel.spec.ts`** (updated):
+
 - Replace `postAgentic` mock with `streamAgentic` async generator mock.
 - `submits correct request and displays streamed content`
 - `disables inputs while loading`

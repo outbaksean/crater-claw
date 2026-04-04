@@ -188,6 +188,82 @@ To override the active endpoint without editing the file, use a user secret:
 dotnet user-secrets set "providers:active" "lan" --project .\CraterClaw.Console
 ```
 
+### Behavior profiles
+
+Behaviors are defined under the `behaviors` key in `craterclaw.json`. Each entry uses its key as the profile ID:
+
+```json
+"behaviors": {
+  "my-behavior": {
+    "name": "My Behavior",
+    "description": "What this behavior does",
+    "systemPrompt": "You are a helpful assistant.",
+    "preferredProviderName": "local",
+    "preferredModelName": "qwen3:8b",
+    "maxContext": 8192,
+    "plugins": []
+  }
+}
+```
+
+`maxContext` (optional int) maps to Ollama's `num_ctx` parameter. Set this to a large value (e.g. `8192` or `16384`) for behaviors that produce or accumulate long outputs, to avoid context window degradation. When omitted, Ollama uses its default context size.
+
+### SubAgent plugin
+
+The `"subagent"` plugin type lets a parent behavior invoke a child agentic loop against another behavior profile. This enables multi-model pipelines where a director model delegates work to specialized sub-models.
+
+Config keys inside the plugin binding's `config` object:
+
+| Key            | Required | Description                                                                    |
+| -------------- | -------- | ------------------------------------------------------------------------------ |
+| `profileId`    | Yes      | ID of the child behavior profile to invoke                                     |
+| `functionName` | Yes      | Name the model uses to call this function (must be unique within the behavior) |
+| `description`  | No       | Description shown to the model explaining when to call it                      |
+
+Example behavior with two subagent plugins:
+
+```json
+"story-director": {
+  "name": "Story Director",
+  "description": "Orchestrates story planning and writing.",
+  "systemPrompt": "You are a story director. Use the available agents to plan and write a story.",
+  "preferredModelName": "qwen3:14b",
+  "maxContext": 16384,
+  "plugins": [
+    {
+      "name": "subagent",
+      "tools": [],
+      "config": {
+        "profileId": "story-planner",
+        "functionName": "CallStoryPlanner",
+        "description": "Calls the story planner to produce a story outline from a premise."
+      }
+    },
+    {
+      "name": "subagent",
+      "tools": [],
+      "config": {
+        "profileId": "story-writer",
+        "functionName": "CallStoryWriter",
+        "description": "Calls the story writer to produce prose from an outline."
+      }
+    }
+  ]
+}
+```
+
+Child agent profiles should set `hidden: true` so they do not appear in the UI or API profile list. They must specify `preferredModelName` — this is used as the model for the child agentic loop. The maximum recursion depth is 2; requests beyond that depth return an error string without invoking the model.
+
+### Story writing behaviors
+
+Three built-in behaviors demonstrate the child agent pipeline:
+
+- `story-director` — the parent behavior (visible in the UI). Select this profile and submit a story premise. The director enriches the premise, calls the planner for an outline, calls the writer for prose, and returns a titled story.
+- `story-planner` — hidden child behavior. Invoked by `story-director` via `PlanStory`. Produces a structured outline (characters, setting, plot beats). Uses `qwen3:8b`.
+- `story-writer` — hidden child behavior. Invoked by `story-director` via `WriteStory`. Writes prose from the outline. Uses `gemma3:12b`.
+
+Requires `qwen3:14b`, `qwen3:8b`, and `gemma3:12b` to be downloaded in Ollama.
+
 ### qBitTorrent plugin
 
 qBitTorrent behaviors enable the following kernel functions:

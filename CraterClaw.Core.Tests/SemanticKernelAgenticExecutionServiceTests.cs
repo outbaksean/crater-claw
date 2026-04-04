@@ -133,6 +133,34 @@ public sealed class SemanticKernelAgenticExecutionServiceTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ReturnsErrorResult_WhenDepthIsAtMaxChildAgentDepth()
+    {
+        var fake = new ThrowingChatCompletionService();
+        var service = BuildService(fake);
+
+        var request = new AgenticRequest("test-model", "Task.", [], MaxIterations: 10,
+            Depth: SemanticKernelAgenticExecutionService.MaxChildAgentDepth);
+        var result = await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
+
+        Assert.Equal(AgenticFinishReason.Completed, result.FinishReason);
+        Assert.Contains("depth", result.Content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ProceedsNormally_WhenDepthIsBelowMaxChildAgentDepth()
+    {
+        var fake = new FakeChatCompletionService(
+            new ChatMessageContent(AuthorRole.Assistant, "Task complete."));
+        var service = BuildService(fake);
+
+        var request = new AgenticRequest("test-model", "Task.", [], MaxIterations: 10,
+            Depth: SemanticKernelAgenticExecutionService.MaxChildAgentDepth - 1);
+        var result = await service.ExecuteAsync(TestEndpoint, request, CancellationToken.None);
+
+        Assert.Equal("Task complete.", result.Content);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_PropagatesException_WhenKernelFunctionThrowsDuringInvocation()
     {
         var functionCallItems = new ChatMessageContentItemCollection
@@ -200,6 +228,25 @@ public sealed class SemanticKernelAgenticExecutionServiceTests
             Kernel? kernel = null,
             CancellationToken cancellationToken = default) =>
             throw new NotImplementedException();
+    }
+
+    private sealed class ThrowingChatCompletionService : IChatCompletionService
+    {
+        public IReadOnlyDictionary<string, object?> Attributes => new Dictionary<string, object?>();
+
+        public Task<IReadOnlyList<ChatMessageContent>> GetChatMessageContentsAsync(
+            ChatHistory chatHistory,
+            PromptExecutionSettings? executionSettings = null,
+            Kernel? kernel = null,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Chat service must not be called at max depth.");
+
+        public IAsyncEnumerable<StreamingChatMessageContent> GetStreamingChatMessageContentsAsync(
+            ChatHistory chatHistory,
+            PromptExecutionSettings? executionSettings = null,
+            Kernel? kernel = null,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Chat service must not be called at max depth.");
     }
 
     private sealed class FakeChatCompletionService(

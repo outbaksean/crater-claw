@@ -51,6 +51,14 @@ The Jellyfin LXC on Proxmox is set up manually for the initial `media-server` ch
 
 The media and arr stack checkpoints are deferred until `web-ux-refactor-2` and `investigate-child-agents` are complete. The child agents research will inform how behaviors are structured going forward, which may affect the design of media behaviors. The web UX refactor will establish the interaction patterns that future behaviors surface through. Proceeding with media work before these are resolved risks rework.
 
+### Semantic Kernel over Microsoft Agent Framework (for now)
+
+CraterClaw uses Semantic Kernel 1.73.0. The Microsoft Agent Framework (public preview, April 2026) is the announced successor to SK and AutoGen, with Ollama as a supported provider, cleaner tool registration, and a graph-based Workflows API better suited to multi-agent patterns. Migration is deferred because the framework is in public preview and the API is unstable. When it reaches stable, migrating `CraterClaw.Core` would simplify the codebase and make child agent patterns much cleaner. Tracked as the `agent-framework-migration` planned checkpoint.
+
+**Why:** Building `child-agent-function` on a moving target before the framework stabilizes is higher risk than the `KernelFunction` wrapper approach on stable SK.
+
+**How to apply:** Do not adopt Agent Framework packages for any new checkpoints until it exits preview. Revisit when a stable release is announced.
+
 ---
 
 ## Pending

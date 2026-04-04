@@ -14,5 +14,7 @@ public sealed class BehaviorEntry
     public string SystemPrompt { get; set; } = "";
     public string? PreferredProviderName { get; set; }
     public string? PreferredModelName { get; set; }
+    public int? MaxContext { get; set; }
+    public bool Hidden { get; set; }
     public List<PluginEntry> Plugins { get; set; } = [];
 }

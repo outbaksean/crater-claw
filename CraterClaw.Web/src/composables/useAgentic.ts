@@ -5,6 +5,8 @@ import type { AgenticRequest } from '../api/types'
 export function useAgentic() {
   const content = ref('')
   const thinking = ref('')
+  const childOutputs = ref<Record<string, string>>({})
+  const childPrompts = ref<Record<string, string>>({})
   const showThinking = ref(false)
   const finishReason = ref<string | null>(null)
   const toolsInvoked = ref<string[]>([])
@@ -19,6 +21,8 @@ export function useAgentic() {
     error.value = null
     content.value = ''
     thinking.value = ''
+    childOutputs.value = {}
+    childPrompts.value = {}
     finishReason.value = null
     toolsInvoked.value = []
     abortController = new AbortController()
@@ -33,6 +37,13 @@ export function useAgentic() {
           content.value += event.content
         } else if (event.type === 'thinking') {
           thinking.value += event.content
+        } else if (event.type === 'child-start') {
+          childPrompts.value = { ...childPrompts.value, [event.source]: event.prompt }
+        } else if (event.type === 'child-chunk') {
+          childOutputs.value = {
+            ...childOutputs.value,
+            [event.source]: (childOutputs.value[event.source] ?? '') + event.content,
+          }
         } else if (event.type === 'done') {
           finishReason.value = event.finishReason
           toolsInvoked.value = event.toolsInvoked
@@ -55,6 +66,8 @@ export function useAgentic() {
   return {
     content,
     thinking,
+    childOutputs,
+    childPrompts,
     showThinking,
     finishReason,
     toolsInvoked,

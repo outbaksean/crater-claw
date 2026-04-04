@@ -95,7 +95,8 @@ internal static class ProvidersEndpoints
                 request.Prompt,
                 plugins,
                 request.MaxIterations ?? 10,
-                SystemPrompt: profile.SystemPrompt);
+                SystemPrompt: profile.SystemPrompt,
+                MaxContext: profile.MaxContext);
 
             var result = await agenticService.ExecuteAsync(endpoint, agenticRequest, cancellationToken);
             return Results.Ok(new AgenticApiResponse(result.Content, result.FinishReason, result.ToolsInvoked));
@@ -150,6 +151,30 @@ internal static class ProvidersEndpoints
                     {
                         await httpContext.Response.WriteAsync(
                             $"data: {JsonSerializer.Serialize(new AgenticSseThinking("thinking", chunk), SseJsonOptions)}\n\n",
+                            cancellationToken);
+                        await httpContext.Response.Body.FlushAsync(cancellationToken);
+                    }
+                    : null,
+                MaxContext: profile.MaxContext,
+                StreamChildStart: async (source, prompt) =>
+                {
+                    await httpContext.Response.WriteAsync(
+                        $"data: {JsonSerializer.Serialize(new AgenticSseChildStart("child-start", source, prompt), SseJsonOptions)}\n\n",
+                        cancellationToken);
+                    await httpContext.Response.Body.FlushAsync(cancellationToken);
+                },
+                StreamChildChunk: async (source, chunk) =>
+                {
+                    await httpContext.Response.WriteAsync(
+                        $"data: {JsonSerializer.Serialize(new AgenticSseChildChunk("child-chunk", source, chunk), SseJsonOptions)}\n\n",
+                        cancellationToken);
+                    await httpContext.Response.Body.FlushAsync(cancellationToken);
+                },
+                StreamChildThinking: request.ShowThinking == true
+                    ? async (source, chunk) =>
+                    {
+                        await httpContext.Response.WriteAsync(
+                            $"data: {JsonSerializer.Serialize(new AgenticSseChildThinking("child-thinking", source, chunk), SseJsonOptions)}\n\n",
                             cancellationToken);
                         await httpContext.Response.Body.FlushAsync(cancellationToken);
                     }
