@@ -65,10 +65,34 @@ export interface AgenticSseThinking {
   content: string
 }
 
+export interface AgenticSseChildStart {
+  type: 'child-start'
+  source: string
+  prompt: string
+}
+
+export interface AgenticSseChildChunk {
+  type: 'child-chunk'
+  source: string
+  content: string
+}
+
+export interface AgenticSseChildThinking {
+  type: 'child-thinking'
+  source: string
+  content: string
+}
+
 export interface AgenticSseDone {
   type: 'done'
   finishReason: string
   toolsInvoked: string[]
 }
 
-export type AgenticSseEvent = AgenticSseChunk | AgenticSseThinking | AgenticSseDone
+export type AgenticSseEvent =
+  | AgenticSseChunk
+  | AgenticSseThinking
+  | AgenticSseChildStart
+  | AgenticSseChildChunk
+  | AgenticSseChildThinking
+  | AgenticSseDone

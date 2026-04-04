@@ -10,7 +10,7 @@ public sealed class AgenticStreamEndpointTests
 {
     private static readonly IReadOnlyList<BehaviorProfile> TestProfiles =
     [
-        new("no-tools", "No Tools", "Basic chat.", "You are a helpful assistant.", null, null, []),
+        new("no-tools", "No Tools", "Basic chat.", "You are a helpful assistant.", null, null, null, false, []),
     ];
 
     private static readonly AgenticResponse DefaultResponse =
@@ -123,6 +123,30 @@ public sealed class AgenticStreamEndpointTests
         var events = ParseSseEvents(await response.Content.ReadAsStringAsync()).ToList();
 
         Assert.DoesNotContain(events, e => e.GetProperty("type").GetString() == "thinking");
+    }
+
+    [Fact]
+    public async Task PostAgenticStream_WithChildChunks_EmitsChildChunkEvents()
+    {
+        using var factory = MakeFactory(new FakeAgenticExecutionService(
+            DefaultResponse,
+            childChunks: [("PlanStory", "outline text")]));
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/providers/test/agentic/stream", new
+        {
+            modelName = "test-model",
+            prompt = "write a story",
+            profileId = "no-tools"
+        });
+
+        response.EnsureSuccessStatusCode();
+        var events = ParseSseEvents(await response.Content.ReadAsStringAsync()).ToList();
+
+        Assert.Contains(events, e =>
+            e.GetProperty("type").GetString() == "child-chunk" &&
+            e.GetProperty("source").GetString() == "PlanStory" &&
+            e.GetProperty("content").GetString() == "outline text");
     }
 
     [Fact]

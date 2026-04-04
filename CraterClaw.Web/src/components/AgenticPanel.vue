@@ -63,7 +63,7 @@ function onInput() {
     <p v-if="agentic.error.value" class="error">{{ agentic.error.value }}</p>
     <div v-if="agentic.content.value || agentic.loading.value" class="result">
       <p v-if="agentic.loading.value" class="running-indicator">running...</p>
-      <details v-if="agentic.thinking.value" class="thinking-block">
+      <details v-if="agentic.thinking.value" class="thinking-block" open>
         <summary>thinking</summary>
         <div class="thinking-content">{{ agentic.thinking.value }}</div>
       </details>
@@ -75,6 +75,18 @@ function onInput() {
           tool
         }}</span>
       </p>
+      <details
+        v-for="(output, source) in agentic.childOutputs.value"
+        :key="source"
+        class="child-block"
+        open
+      >
+        <summary>{{ source }}</summary>
+        <div v-if="agentic.childPrompts.value[source]" class="child-prompt">
+          {{ agentic.childPrompts.value[source] }}
+        </div>
+        <div class="child-content">{{ output }}</div>
+      </details>
       <div v-if="agentic.content.value" class="response">{{ agentic.content.value }}</div>
     </div>
   </div>
@@ -216,6 +228,47 @@ button:disabled {
   white-space: pre-wrap;
   line-height: 1.6;
   max-height: 240px;
+  overflow-y: auto;
+}
+
+.child-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.child-block summary {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  padding: 6px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.child-block summary::-webkit-details-marker {
+  display: none;
+}
+
+.child-prompt {
+  padding: 6px 12px 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  line-height: 1.5;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+  opacity: 0.7;
+}
+
+.child-content {
+  padding: 8px 12px 12px;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  line-height: 1.6;
+  max-height: 320px;
   overflow-y: auto;
 }
 

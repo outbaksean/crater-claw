@@ -22,8 +22,57 @@
             "description": "General-purpose conversation with no external tools.",
             "systemPrompt": "You are a helpful assistant.",
             "preferredProviderName": "wslWithLocalhostIp",
-            "preferredModelName": "qwen3:8b",
+            "preferredModelName": "gemma4:latest",
+            "maxContext": 4096,
             "plugins": []
+        },
+        "story-planner": {
+            "name": "Story Planner",
+            "description": "Creates a structured story outline from an enriched premise",
+            "hidden": true,
+            "systemPrompt": "You are a story structure specialist. Given a story premise with tone and constraints, produce a detailed outline: protagonist and supporting characters with brief sketches, setting, and 4-6 plot beats from opening to resolution. Be specific and concrete. Output only the outline.",
+            "preferredProviderName": "wslWithLocalhostIp",
+            "preferredModelName": "gemma4:latest",
+            "maxContext": 4096,
+            "plugins": []
+        },
+        "story-writer": {
+            "name": "Story Writer",
+            "description": "Writes short story prose from a structural outline",
+            "hidden": true,
+            "systemPrompt": "You are a prose writer. Given a story outline and creative direction, write the full short story. Write vivid, engaging prose. Stay true to the outline's structure and the specified tone. Output only the story text, no commentary.",
+            "preferredProviderName": "wslWithLocalhostIp",
+            "preferredModelName": "gemma4:latest",
+            "maxContext": 8192,
+            "plugins": []
+        },
+        "story-director": {
+            "name": "Story Director",
+            "description": "Writes a short story using a planner and writer model",
+            "systemPrompt": "You are a creative director for short fiction. When given a premise:\n1. Expand it: decide on tone (e.g. melancholy, tense, whimsical), genre, length, and one or two creative constraints that will make the story interesting.\n2. Call PlanStory with the enriched premise including your tone and constraints.\n3. Call WriteStory with the outline and your tone/constraints as context.\n4. Generate a title.\n5. Return the title followed by the complete story.\nDo not write the story yourself — use the tools.",
+            "preferredProviderName": "wslWithLocalhostIp",
+            "preferredModelName": "gemma4:latest",
+            "maxContext": 16384,
+            "plugins": [
+                {
+                    "name": "subagent",
+                    "tools": [],
+                    "config": {
+                        "profileId": "story-planner",
+                        "functionName": "PlanStory",
+                        "description": "Creates a structured story outline from an enriched premise. Pass the premise with tone and creative constraints."
+                    }
+                },
+                {
+                    "name": "subagent",
+                    "tools": [],
+                    "config": {
+                        "profileId": "story-writer",
+                        "functionName": "WriteStory",
+                        "description": "Writes short story prose from a structural outline. Pass the outline and tone/constraints."
+                    }
+                }
+            ]
         },
         "qbittorrent-seedbox": {
             "name": "qBitTorrent (Seedbox)",

@@ -30,10 +30,10 @@ internal sealed class OllamaLoggingHandler(ILoggerFactory loggerFactory) : Deleg
 
 - Creates `_logger = loggerFactory.CreateLogger("CraterClaw.AiTraffic.Raw")`.
 - In `SendAsync`:
-  1. If `request.Content` is not null, read the request body as a string and log it at `Debug` level with message `"[REQUEST] {Body}"`.
-  2. Call `base.SendAsync` to get the response.
-  3. If `response.Content` is not null, replace `response.Content` with `new TeeHttpContent(response.Content, _logger)`.
-  4. Return the response.
+    1. If `request.Content` is not null, read the request body as a string and log it at `Debug` level with message `"[REQUEST] {Body}"`.
+    2. Call `base.SendAsync` to get the response.
+    3. If `response.Content` is not null, replace `response.Content` with `new TeeHttpContent(response.Content, _logger)`.
+    4. Return the response.
 
 **`CraterClaw.Core/TeeHttpContent.cs`** — new file:
 
@@ -47,15 +47,18 @@ internal sealed class TeeHttpContent(HttpContent inner, ILogger logger) : HttpCo
 - On `Dispose(bool)`: if the accumulator has bytes, logs them as UTF-8 string at `Debug` level with message `"[RESPONSE] {Body}"`; then disposes `inner`.
 
 **`CraterClaw.Core/DefaultKernelFactory.cs`**:
+
 - Change `httpClientFactory.CreateClient()` to `httpClientFactory.CreateClient("ollama")`.
 - Remove the manual `Timeout` assignment (set on the named client registration instead).
 
 **`CraterClaw.Core/ServiceCollectionExtensions.cs`**:
+
 - Add `services.AddTransient<OllamaLoggingHandler>()`.
 - Add `services.AddHttpClient("ollama", c => c.Timeout = TimeSpan.FromMinutes(10)).AddHttpMessageHandler<OllamaLoggingHandler>()`.
 - Remove `services.AddHttpClient()` if it was added here (if it was only added in the host `Program.cs`, no change needed in Core).
 
 **`CraterClaw.Console/Program.cs`** and **`CraterClaw.Api/Program.cs`**:
+
 - Read `aiRawLogging:enabled` (bool) and `aiRawLogging:path` (string) from config using the same pattern as `aiLogging`.
 - Resolve the raw log path with suffix `.raw.log` instead of `.log`: default `logs/ollama-.raw.log` (console) / `logs/ollama-api-.raw.log` (API); directory → `ollama-.raw.log` inside it; file prefix → `{prefix}-.raw.log`.
 - Update the main log sub-logger filter to also exclude `CraterClaw.AiTraffic.Raw`.
@@ -66,11 +69,11 @@ internal sealed class TeeHttpContent(HttpContent inner, ILogger logger) : HttpCo
 
 Follow the same rules as `ResolveAiLogPath` but with a `.raw.log` suffix:
 
-| `aiRawLogging:path` value | Resolved path |
-|---|---|
-| (empty / absent) | `logs/ollama-.raw.log` (console) or `logs/ollama-api-.raw.log` (API) |
-| Directory path | `{dir}/ollama-.raw.log` |
-| File prefix (e.g. `logs/raw`) | `logs/raw-.raw.log` |
+| `aiRawLogging:path` value     | Resolved path                                                        |
+| ----------------------------- | -------------------------------------------------------------------- |
+| (empty / absent)              | `logs/ollama-.raw.log` (console) or `logs/ollama-api-.raw.log` (API) |
+| Directory path                | `{dir}/ollama-.raw.log`                                              |
+| File prefix (e.g. `logs/raw`) | `logs/raw-.raw.log`                                                  |
 
 Note: Serilog inserts the date between the prefix and the suffix (e.g. `ollama-20260327.raw.log`).
 

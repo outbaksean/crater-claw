@@ -162,4 +162,97 @@ public sealed class BehaviorProfileServiceTests
 
         Assert.Empty(profiles);
     }
+
+    [Fact]
+    public void BehaviorProfile_MapsMaxContextWhenSet()
+    {
+        var service = CreateService(new Dictionary<string, BehaviorEntry>
+        {
+            ["with-context"] = new BehaviorEntry
+            {
+                Name = "With Context",
+                Description = "Test",
+                SystemPrompt = "Prompt",
+                MaxContext = 8192
+            }
+        });
+
+        var profile = service.GetById("with-context");
+
+        Assert.NotNull(profile);
+        Assert.Equal(8192, profile.MaxContext);
+    }
+
+    [Fact]
+    public void BehaviorProfile_MaxContextIsNullWhenNotConfigured()
+    {
+        var service = CreateService(new Dictionary<string, BehaviorEntry>
+        {
+            ["no-context"] = new BehaviorEntry { Name = "No Context", Description = "Test", SystemPrompt = "Prompt" }
+        });
+
+        var profile = service.GetById("no-context");
+
+        Assert.NotNull(profile);
+        Assert.Null(profile.MaxContext);
+    }
+
+    [Fact]
+    public void GetAll_ExcludesHiddenProfiles()
+    {
+        var service = CreateService(new Dictionary<string, BehaviorEntry>
+        {
+            ["visible"] = new BehaviorEntry { Name = "Visible", Description = "Test", SystemPrompt = "Prompt" },
+            ["hidden"] = new BehaviorEntry { Name = "Hidden", Description = "Test", SystemPrompt = "Prompt", Hidden = true }
+        });
+
+        var profiles = service.GetAll();
+
+        Assert.Single(profiles);
+        Assert.Equal("visible", profiles[0].Id);
+    }
+
+    [Fact]
+    public void GetAll_IncludesProfilesWithHiddenFalse()
+    {
+        var service = CreateService(new Dictionary<string, BehaviorEntry>
+        {
+            ["alpha"] = new BehaviorEntry { Name = "Alpha", Description = "Test", SystemPrompt = "Prompt", Hidden = false }
+        });
+
+        var profiles = service.GetAll();
+
+        Assert.Single(profiles);
+        Assert.Equal("alpha", profiles[0].Id);
+    }
+
+    [Fact]
+    public void GetById_ReturnsHiddenProfile()
+    {
+        var service = CreateService(new Dictionary<string, BehaviorEntry>
+        {
+            ["hidden"] = new BehaviorEntry { Name = "Hidden", Description = "Test", SystemPrompt = "Prompt", Hidden = true }
+        });
+
+        var profile = service.GetById("hidden");
+
+        Assert.NotNull(profile);
+        Assert.Equal("hidden", profile.Id);
+        Assert.True(profile.Hidden);
+    }
+
+    [Fact]
+    public void GetById_ReturnsNonHiddenProfile()
+    {
+        var service = CreateService(new Dictionary<string, BehaviorEntry>
+        {
+            ["visible"] = new BehaviorEntry { Name = "Visible", Description = "Test", SystemPrompt = "Prompt", Hidden = false }
+        });
+
+        var profile = service.GetById("visible");
+
+        Assert.NotNull(profile);
+        Assert.Equal("visible", profile.Id);
+        Assert.False(profile.Hidden);
+    }
 }
