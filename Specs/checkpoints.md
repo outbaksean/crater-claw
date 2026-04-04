@@ -149,6 +149,24 @@ Replaced the vertical panel-reveal layout with a two-zone design: persistent top
 
 Investigated SK agent orchestration support with Ollama. `ChatCompletionAgent` from `Microsoft.SemanticKernel.Agents.Core` works with any `IChatCompletionService` including Ollama; `AgentGroupChat` is deprecated (replaced by experimental orchestration packages). Recommended pattern: a `KernelFunction` wrapper around `IAgenticExecutionService` — no new packages required. Proposed `child-agent-function` checkpoint as a building block; behavior wiring deferred until media workflows provide a concrete use case. Notes in `Specs/child-agents-notes.md`.
 
+### ollama-context-config
+
+**Type: Code**
+
+Added optional `maxContext` (int?) to behavior profiles in `craterclaw.json`. Threads through `BehaviorEntry` → `BehaviorProfile` → `AgenticRequest` → `OllamaPromptExecutionSettings` as `num_ctx`. Default: null (Ollama default). Addresses context window degradation in long-running or parent behaviors that accumulate large chat histories.
+
+### child-agent-function
+
+**Type: Code**
+
+Added optional `hidden` flag to behavior profiles — hidden profiles are excluded from `GetAll()` (API/UI) but resolvable by `GetById()` (child agent lookup). `SubAgentPlugin` class registered as a `"subagent"` plugin type in `DefaultPluginRegistry`. Child agent identified by behavior profile name; profile supplies model, system prompt, max context, and plugins. `AgenticRequest` gains `int Depth = 0`; `ExecuteAsync` enforces a hardcoded max depth (2) and returns an error result beyond it. `PluginExecutionContext` (AsyncLocal) carries the current endpoint, depth, and child streaming callbacks into plugins. Child output streams to the UI via `child-start`, `child-chunk`, and `child-thinking` SSE events. Each scrollable area (thinking, child output, response) auto-scrolls to the bottom during streaming and stops on manual scroll-up.
+
+### story-writing-behavior
+
+**Type: Code**
+
+Three behavior profiles wiring up the child-agent POC: `story-director` (two subagent plugins), `story-planner` (hidden child), `story-writer` (hidden child). Config-only checkpoint — no C# changes. Demonstrates a three-model creative pipeline with streamed intermediate outputs visible in the web UI.
+
 ## Planned
 
 ### vscode-prettier-config
@@ -173,28 +191,6 @@ Refactor the web ux with better placement of providers, models, behavior, chat b
 **Type: Research**
 
 Investigate allowing the model to spawn subagents. The output will either be checkpoints or a notes file
-
-### ollama-context-config
-
-**Type: Code**
-
-Add optional `maxContext` (int?) to behavior profiles in `craterclaw.json`. Threads through `BehaviorEntry` → `BehaviorProfile` → `AgenticRequest` → `OllamaPromptExecutionSettings` as `num_ctx`. Default: null (Ollama default). Addresses context window degradation in long-running or parent behaviors that accumulate large chat histories.
-Branch: spec/child-agent-poc
-
-### child-agent-function
-
-**Type: Code**
-
-Adds optional `hidden` flag to behavior profiles — hidden profiles are excluded from `GetAll()` (API/UI) but resolvable by `GetById()` (child agent lookup). `SubAgentPlugin` class registered as a `"subagent"` plugin type in `DefaultPluginRegistry`. Child agent identified by behavior profile name; profile supplies model, system prompt, max context, and plugins. `AgenticRequest` gains `int Depth = 0`; `ExecuteAsync` enforces a hardcoded max depth (2) and returns an error result beyond it. A new `PluginExecutionContext` (AsyncLocal) makes the current endpoint and depth available to plugins during execution. Execution is sequential; child output returned as a string. See `Specs/child-agents-notes.md`.
-Branch: spec/child-agent-poc
-
-### story-writing-behavior
-
-**Type: Code**
-
-Three behavior profiles wiring up the child-agent POC: `story-director` (qwen3:14b, two subagent plugins), `story-planner` (qwen3:8b, no plugins), `story-writer` (gemma3:12b, no plugins). Config-only checkpoint — no C# changes. Demonstrates a three-model creative pipeline.
-Depends on: ollama-context-config, child-agent-function
-Branch: spec/child-agent-poc
 
 ### linux-aliases
 
