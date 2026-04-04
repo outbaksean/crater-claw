@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useAgentic } from '../composables/useAgentic'
 
 const props = defineProps<{
@@ -12,9 +12,85 @@ const prompt = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const agentic = useAgentic()
 
+// Auto-scroll for the thinking div.
+const thinkingRef = ref<HTMLDivElement | null>(null)
+const thinkingUserScrolled = ref(false)
+
+function onThinkingScroll() {
+  const el = thinkingRef.value
+  if (!el) return
+  thinkingUserScrolled.value = el.scrollHeight - el.scrollTop - el.clientHeight > 10
+}
+
+watch(
+  () => agentic.thinking.value,
+  () => {
+    nextTick(() => {
+      if (thinkingUserScrolled.value) return
+      const el = thinkingRef.value
+      if (el) el.scrollTop = el.scrollHeight
+    })
+  },
+)
+
+// Auto-scroll for the main response div.
+// Stops auto-scrolling once the user manually scrolls up; resumes on next run.
+const responseRef = ref<HTMLDivElement | null>(null)
+const responseUserScrolled = ref(false)
+
+function onResponseScroll() {
+  const el = responseRef.value
+  if (!el) return
+  responseUserScrolled.value = el.scrollHeight - el.scrollTop - el.clientHeight > 10
+}
+
+watch(
+  () => agentic.content.value,
+  () => {
+    nextTick(() => {
+      if (responseUserScrolled.value) return
+      const el = responseRef.value
+      if (el) el.scrollTop = el.scrollHeight
+    })
+  },
+)
+
+// Auto-scroll for child content divs with per-source scroll guard.
+const childContentRefs = new Map<string, HTMLDivElement>()
+const childUserScrolled = new Map<string, boolean>()
+
+function setChildContentRef(source: string, el: Element | null) {
+  if (el) childContentRefs.set(source, el as HTMLDivElement)
+  else {
+    childContentRefs.delete(source)
+    childUserScrolled.delete(source)
+  }
+}
+
+function onChildScroll(source: string) {
+  const el = childContentRefs.get(source)
+  if (!el) return
+  childUserScrolled.set(source, el.scrollHeight - el.scrollTop - el.clientHeight > 10)
+}
+
+watch(
+  () => agentic.childOutputs.value,
+  () => {
+    nextTick(() => {
+      for (const [source, el] of childContentRefs) {
+        if (!childUserScrolled.get(source)) el.scrollTop = el.scrollHeight
+      }
+    })
+  },
+  { deep: true },
+)
+
 async function submit() {
   const content = prompt.value.trim()
   if (!content || agentic.loading.value) return
+  thinkingUserScrolled.value = false
+  responseUserScrolled.value = false
+  childUserScrolled.clear()
   await agentic.run(props.providerName, {
     modelName: props.modelName,
     prompt: content,
@@ -65,7 +141,7 @@ function onInput() {
       <p v-if="agentic.loading.value" class="running-indicator">running...</p>
       <details v-if="agentic.thinking.value" class="thinking-block" open>
         <summary>thinking</summary>
-        <div class="thinking-content">{{ agentic.thinking.value }}</div>
+        <div ref="thinkingRef" class="thinking-content" @scroll="onThinkingScroll">{{ agentic.thinking.value }}</div>
       </details>
       <p v-if="agentic.finishReason.value" class="finish-reason">
         {{ agentic.finishReason.value }}
@@ -85,9 +161,18 @@ function onInput() {
         <div v-if="agentic.childPrompts.value[source]" class="child-prompt">
           {{ agentic.childPrompts.value[source] }}
         </div>
-        <div class="child-content">{{ output }}</div>
+        <div
+          class="child-content"
+          :ref="(el) => setChildContentRef(source as string, el)"
+          @scroll="onChildScroll(source as string)"
+        >{{ output }}</div>
       </details>
-      <div v-if="agentic.content.value" class="response">{{ agentic.content.value }}</div>
+      <div
+        v-if="agentic.content.value"
+        ref="responseRef"
+        class="response"
+        @scroll="onResponseScroll"
+      >{{ agentic.content.value }}</div>
     </div>
   </div>
 </template>
