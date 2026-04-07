@@ -1,0 +1,300 @@
+@page "/"
+@rendermode InteractiveServer
+@inject IBehaviorProfileService ProfileService
+@inject IModelListingService ModelListingService
+@inject IProviderStatusService ProviderStatusService
+@inject IAgenticExecutionService AgenticService
+@inject IPluginRegistry PluginRegistry
+@inject IOptions<ProviderOptions> ProviderOptions
+@inject IJSRuntime JS
+
+<div class="app">
+    <AppTaskbar
+        Profiles="profiles"
+        SelectedProfile="selectedProfileId"
+        Providers="providers"
+        SelectedProvider="selectedProviderName"
+        ProviderStatus="providerStatus"
+        Models="models"
+        SelectedModel="selectedModelName"
+        Warnings="profileWarnings"
+        OnProviderSelected="HandleProviderSelected"
+        OnModelSelected="HandleModelSelected"
+        OnProfileSelected="HandleProfileSelected" />
+
+    <main class="content">
+        <div class="agentic">
+            <div class="input-bar">
+                <textarea @bind="prompt" @bind:event="oninput" disabled="@loading" placeholder="task prompt..." rows="1" />
+                <button @onclick="Submit" disabled="@(loading || string.IsNullOrWhiteSpace(prompt) || string.IsNullOrEmpty(selectedModelName) || string.IsNullOrEmpty(selectedProfileId))">
+                    @(loading ? "running..." : "run")
+                </button>
+            </div>
+            <label class="thinking-toggle">
+                <input type="checkbox" @bind="showThinking" disabled="@loading" />
+                show thinking
+            </label>
+
+            @if (error != null)
+            {
+                <p class="error">@error</p>
+            }
+
+            @if (!string.IsNullOrEmpty(content) || loading || !string.IsNullOrEmpty(thinking) || childOutputs.Count > 0)
+            {
+                <div class="result">
+                    @if (loading)
+                    {
+                        <p class="running">running...</p>
+                    }
+
+                    @if (!string.IsNullOrEmpty(thinking))
+                    {
+                        <details class="thinking-block" open>
+                            <summary>thinking</summary>
+                            <div id="thinking" class="thinking-content">@thinking</div>
+                        </details>
+                    }
+
+                    @if (finishReason != null)
+                    {
+                        <p class="finish-reason">@finishReason.Value.ToString().ToLowerInvariant()</p>
+                    }
+
+                    @if (toolsInvoked.Count > 0)
+                    {
+                        <p class="tools-line">
+                            @foreach (var tool in toolsInvoked)
+                            {
+                                <span class="tool-name">@tool</span>
+                            }
+                        </p>
+                    }
+
+                    @foreach (var source in childOutputs.Keys)
+                    {
+                        <details class="child-block" open>
+                            <summary>@source</summary>
+                            @if (childPrompts.TryGetValue(source, out var childPrompt))
+                            {
+                                <div class="child-prompt">@childPrompt</div>
+                            }
+                            <div id="child-@source" class="child-content">@childOutputs[source]</div>
+                        </details>
+                    }
+
+                    @if (!string.IsNullOrEmpty(content))
+                    {
+                        <div id="response" class="response">@content</div>
+                    }
+                </div>
+            }
+        </div>
+    </main>
+</div>
+
+@code {
+    private List<string> providers = [];
+    private string selectedProviderName = "";
+    private ProviderStatus? providerStatus;
+    private List<ModelDescriptor> models = [];
+    private string selectedModelName = "";
+    private List<BehaviorProfile> profiles = [];
+    private string selectedProfileId = "";
+    private List<string> profileWarnings = [];
+    private string prompt = "";
+    private bool showThinking;
+    private string content = "";
+    private string thinking = "";
+    private Dictionary<string, string> childPrompts = [];
+    private Dictionary<string, string> childOutputs = [];
+    private AgenticFinishReason? finishReason;
+    private List<string> toolsInvoked = [];
+    private bool loading;
+    private string? error;
+    private CancellationTokenSource? cts;
+    private HashSet<string> _scrollTargets = [];
+
+    private async Task HandleProviderSelected(string name)
+    {
+        selectedProviderName = name;
+        await OnProviderChanged();
+    }
+
+    private Task HandleModelSelected(string name)
+    {
+        selectedModelName = name;
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleProfileSelected(string id)
+    {
+        selectedProfileId = id;
+        await OnProfileChanged();
+    }
+
+    protected override void OnInitialized()
+    {
+        var opts = ProviderOptions.Value;
+        providers = [.. opts.Endpoints.Keys];
+        profiles = [.. ProfileService.GetAll()];
+
+        if (!string.IsNullOrEmpty(opts.Active) && opts.Endpoints.ContainsKey(opts.Active))
+            selectedProviderName = opts.Active;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(selectedProviderName))
+            await LoadProviderAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        foreach (var id in _scrollTargets)
+            await JS.InvokeVoidAsync("craterClaw.scrollToBottom", id);
+        _scrollTargets.Clear();
+    }
+
+    private async Task OnProviderChanged()
+    {
+        models = [];
+        selectedModelName = "";
+        providerStatus = null;
+        if (!string.IsNullOrEmpty(selectedProviderName))
+            await LoadProviderAsync();
+    }
+
+    private async Task LoadProviderAsync()
+    {
+        var opts = ProviderOptions.Value;
+        if (!opts.Endpoints.TryGetValue(selectedProviderName, out var epOpts))
+            return;
+        var endpoint = new ProviderEndpoint(selectedProviderName, epOpts.BaseUrl);
+        providerStatus = await ProviderStatusService.CheckStatusAsync(endpoint, CancellationToken.None);
+        if (providerStatus.IsReachable)
+        {
+            try
+            {
+                models = [.. await ModelListingService.ListModelsAsync(endpoint, CancellationToken.None)];
+            }
+            catch
+            {
+                models = [];
+            }
+        }
+    }
+
+    private async Task OnProfileChanged()
+    {
+        profileWarnings = [];
+        if (string.IsNullOrEmpty(selectedProfileId)) return;
+
+        var profile = ProfileService.GetById(selectedProfileId);
+        if (profile == null) return;
+
+        if (!string.IsNullOrEmpty(profile.PreferredProviderName))
+        {
+            if (providers.Contains(profile.PreferredProviderName))
+            {
+                selectedProviderName = profile.PreferredProviderName;
+                await LoadProviderAsync();
+            }
+            else
+            {
+                profileWarnings.Add($"Preferred provider '{profile.PreferredProviderName}' not found.");
+            }
+        }
+
+        if (!string.IsNullOrEmpty(profile.PreferredModelName))
+        {
+            var match = models.FirstOrDefault(m => m.Name == profile.PreferredModelName);
+            if (match != null)
+                selectedModelName = match.Name;
+            else
+                profileWarnings.Add($"Preferred model '{profile.PreferredModelName}' not found.");
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (loading || string.IsNullOrWhiteSpace(prompt)) return;
+
+        var opts = ProviderOptions.Value;
+        if (!opts.Endpoints.TryGetValue(selectedProviderName, out var epOpts)) return;
+
+        var profile = ProfileService.GetById(selectedProfileId);
+        if (profile == null) return;
+
+        loading = true;
+        error = null;
+        content = "";
+        thinking = "";
+        childPrompts = [];
+        childOutputs = [];
+        finishReason = null;
+        toolsInvoked = [];
+        _scrollTargets.Clear();
+        await JS.InvokeVoidAsync("craterClaw.resetScroll", "response");
+        await JS.InvokeVoidAsync("craterClaw.resetScroll", "thinking");
+        cts = new CancellationTokenSource();
+
+        var endpoint = new ProviderEndpoint(selectedProviderName, epOpts.BaseUrl);
+        var plugins = PluginRegistry.Resolve(profile.Plugins);
+        var request = new AgenticRequest(
+            ModelName: selectedModelName,
+            Prompt: prompt,
+            Plugins: plugins,
+            MaxIterations: 20,
+            SystemPrompt: profile.SystemPrompt,
+            MaxContext: profile.MaxContext,
+            StreamChunk: async chunk =>
+            {
+                content += chunk;
+                _scrollTargets.Add("response");
+                await InvokeAsync(StateHasChanged);
+            },
+            StreamThinkingChunk: showThinking ? async chunk =>
+            {
+                thinking += chunk;
+                _scrollTargets.Add("thinking");
+                await InvokeAsync(StateHasChanged);
+            } : null,
+            StreamChildStart: async (source, childPrompt) =>
+            {
+                childPrompts[source] = childPrompt;
+                childOutputs[source] = "";
+                await InvokeAsync(StateHasChanged);
+            },
+            StreamChildChunk: async (source, chunk) =>
+            {
+                childOutputs[source] = (childOutputs.TryGetValue(source, out var existing) ? existing : "") + chunk;
+                _scrollTargets.Add($"child-{source}");
+                await InvokeAsync(StateHasChanged);
+            },
+            StreamChildThinking: showThinking ? async (source, chunk) =>
+            {
+                _ = source;
+                _ = chunk;
+                await Task.CompletedTask;
+            } : null);
+
+        try
+        {
+            var response = await AgenticService.ExecuteAsync(endpoint, request, cts.Token);
+            finishReason = response.FinishReason;
+            toolsInvoked = [.. response.ToolsInvoked];
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+            cts = null;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

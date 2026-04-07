@@ -1,0 +1,152 @@
+@inject IOptions<ProviderOptions> ProviderOptions
+
+@if (openSection != null)
+{
+    <div class="overlay" @onclick="CloseAll"></div>
+}
+
+<div class="taskbar-root">
+    <div class="taskbar">
+        <span class="wordmark">CRATERCLAW</span>
+        <div class="selectors">
+
+            <div class="selector">
+                <button class="selector-trigger selector-trigger--profile @(openSection == "profile" ? "selector-trigger--active" : "")"
+                        @onclick='() => Toggle("profile")'>
+                    <span class="selector-label">profile</span>
+                    <span class="selector-value">@(ProfileName ?? "none")</span>
+                    <span class="selector-chevron">@(openSection == "profile" ? "▲" : "▼")</span>
+                </button>
+                @if (openSection == "profile")
+                {
+                    <div class="selector-dropdown">
+                        <ul class="selector-list">
+                            @foreach (var p in Profiles)
+                            {
+                                <li class="selector-option @(SelectedProfile == p.Id ? "selector-option--selected" : "")"
+                                    @onclick="() => SelectProfile(p.Id)">
+                                    <span class="option-name">@p.Name</span>
+                                    <span class="option-meta">@p.Description</span>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+
+            <div class="selector">
+                <button class="selector-trigger @(openSection == "provider" ? "selector-trigger--active" : "")"
+                        @onclick='() => Toggle("provider")'>
+                    <span class="selector-label">provider</span>
+                    <span class="selector-value">@(SelectedProvider ?? "none")</span>
+                    @if (SelectedProvider != null && ProviderStatus != null)
+                    {
+                        <span class="pill-inline">
+                            <span class="pill @(ProviderStatus.IsReachable ? "pill--ok" : "pill--err")">
+                                @(ProviderStatus.IsReachable ? "ok" : "err")
+                            </span>
+                        </span>
+                    }
+                    <span class="selector-chevron">@(openSection == "provider" ? "▲" : "▼")</span>
+                </button>
+                @if (openSection == "provider")
+                {
+                    <div class="selector-dropdown">
+                        <ul class="selector-list">
+                            @foreach (var name in Providers)
+                            {
+                                var baseUrl = ProviderOptions.Value.Endpoints.TryGetValue(name, out var ep) ? ep.BaseUrl : "";
+                                <li class="selector-option @(SelectedProvider == name ? "selector-option--selected" : "")"
+                                    @onclick="() => SelectProvider(name)">
+                                    <span class="option-name">@name</span>
+                                    <span class="option-meta">@baseUrl</span>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+
+            <div class="selector">
+                <button class="selector-trigger @(openSection == "model" ? "selector-trigger--active" : "")"
+                        disabled="@(SelectedProvider == null)"
+                        @onclick='() => Toggle("model")'>
+                    <span class="selector-label">model</span>
+                    <span class="selector-value">@(SelectedModel ?? "none")</span>
+                    <span class="selector-chevron">@(openSection == "model" ? "▲" : "▼")</span>
+                </button>
+                @if (openSection == "model")
+                {
+                    <div class="selector-dropdown selector-dropdown--right">
+                        <ul class="selector-list">
+                            @foreach (var m in Models)
+                            {
+                                <li class="selector-option @(SelectedModel == m.Name ? "selector-option--selected" : "")"
+                                    @onclick="() => SelectModel(m.Name)">
+                                    <span class="option-name">@m.Name</span>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+
+        </div>
+    </div>
+    @if (Warnings.Count > 0)
+    {
+        <div class="taskbar-warnings">
+            @foreach (var w in Warnings)
+            {
+                <span class="taskbar-warning">@w</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<BehaviorProfile> Profiles { get; set; } = [];
+    [Parameter] public string? SelectedProfile { get; set; }
+
+    [Parameter] public List<string> Providers { get; set; } = [];
+    [Parameter] public string? SelectedProvider { get; set; }
+    [Parameter] public ProviderStatus? ProviderStatus { get; set; }
+
+    [Parameter] public List<ModelDescriptor> Models { get; set; } = [];
+    [Parameter] public string? SelectedModel { get; set; }
+
+    [Parameter] public List<string> Warnings { get; set; } = [];
+
+    [Parameter] public EventCallback<string> OnProviderSelected { get; set; }
+    [Parameter] public EventCallback<string> OnModelSelected { get; set; }
+    [Parameter] public EventCallback<string> OnProfileSelected { get; set; }
+
+    private string? openSection;
+
+    private string? ProfileName => Profiles.FirstOrDefault(p => p.Id == SelectedProfile)?.Name;
+
+    private void Toggle(string section) =>
+        openSection = openSection == section ? null : section;
+
+    private void CloseAll() => openSection = null;
+
+    private async Task SelectProfile(string id)
+    {
+        openSection = null;
+        StateHasChanged();
+        await OnProfileSelected.InvokeAsync(id);
+    }
+
+    private async Task SelectProvider(string name)
+    {
+        openSection = null;
+        StateHasChanged();
+        await OnProviderSelected.InvokeAsync(name);
+    }
+
+    private async Task SelectModel(string name)
+    {
+        openSection = null;
+        await OnModelSelected.InvokeAsync(name);
+    }
+}
